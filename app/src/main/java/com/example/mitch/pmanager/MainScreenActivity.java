@@ -68,13 +68,11 @@ public class MainScreenActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        if (true) {}
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (true) {}
     }
 
     @Override
