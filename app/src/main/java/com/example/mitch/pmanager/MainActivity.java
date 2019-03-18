@@ -32,25 +32,24 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            String[] permissions, int[] grantResults) {
-        switch (requestCode) {
-            case REQUEST_WRITE_STORAGE: {
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        // TODO Mitch, might be cleaner like this:
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            switch (requestCode) {
+                case REQUEST_WRITE_STORAGE: {
                     hasWritePerm = true;
+                    return;
                 }
-                return;
-            }
-            case REQUEST_READ_STORAGE: {
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                case REQUEST_READ_STORAGE: {
                     hasReadPerm = true;
+                    return;
                 }
-                return;
             }
         }
     }
 
+    // TODO this seems to only be called from this class, so it should be private
     public void checkReadPermission() {
+        // TODO Mitch, put cursor on READ_EXTERNAL_STORAGE and press alt-return, choose "add static import" - it will import and shorten your code a bit
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
             if (!ActivityCompat.shouldShowRequestPermissionRationale(this,
@@ -61,9 +60,17 @@ public class MainActivity extends AppCompatActivity {
         } else {
             hasReadPerm = true;
         }
+        // TODO also, it might be easier to understand like this:
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+            hasReadPerm = true;
+        } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_EXTERNAL_STORAGE)) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_READ_STORAGE);
+        }
     }
 
+    // TODO this seems to only be called from this class, so it should be private
     public void checkWritePermission() {
+        // TODO same comments here
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
             if (!ActivityCompat.shouldShowRequestPermissionRationale(this,
@@ -80,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
-        
+
     }
 
     public void openFile(View view) {
@@ -91,6 +98,7 @@ public class MainActivity extends AppCompatActivity {
         password = pd.getText().toString();
         checkWritePermission();
         File root = new File(this.getFilesDir(), "PManager");
+        // TODO should make this if (!root.exists() && hasWritePerm)
         if (!root.exists()) {
             if (hasWritePerm) {
                 root.mkdirs();
@@ -100,9 +108,11 @@ public class MainActivity extends AppCompatActivity {
         boolean exists = out.exists();
         try {
             if (exists) {
+                // TODO if you are always going to call checkReadPermission before doing if(hasReadPerm), maybe checkReadPermission should return boolean?
                 checkReadPermission();
                 if (hasReadPerm) {
                     LibraryFile f = new LibraryFile(out);
+                    // TODO these 2 variables should be inside the try, and just assigned when defined, since they aren't used for anything else
                     AES decrypt;
                     String decrypted;
                     try {
@@ -115,6 +125,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 if (splitFile[0].equals(filename)) {
+                    // TODO what would you think about putting a PasswordEntry into the intent, instead of the separate fields?
                     intent.putExtra("file", out);
                     intent.putExtra("filename", filename);
                     intent.putExtra("password", password);
@@ -124,6 +135,7 @@ public class MainActivity extends AppCompatActivity {
                     fn.setText("Wrong Password!");
                 }
             } else {
+                // TODO same comment about these
                 checkWritePermission();
                 if (hasWritePerm) {
                     AES newFile = new AES(AES.pad(password));
