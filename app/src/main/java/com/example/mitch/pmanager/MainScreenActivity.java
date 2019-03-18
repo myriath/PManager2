@@ -4,6 +4,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -47,21 +48,9 @@ public class MainScreenActivity extends AppCompatActivity {
         }
         assert fileData != null;
         TableLayout tl = findViewById(R.id.tableLayout);
+        clearTable();
         for (PasswordEntry entry : fileData) {
-            TextView id = new TextView(this);
-            TextView dm = new TextView(this);
-            TextView un = new TextView(this);
-            TextView pw = new TextView(this);
-            id.setText(Integer.toString(entry.index));
-            dm.setText(entry.domain);
-            un.setText(entry.username);
-            pw.setText(entry.password);
-            TableRow tr = new TableRow(this);
-            tr.addView(id);
-            tr.addView(dm);
-            tr.addView(un);
-            tr.addView(pw);
-            tl.addView(tr);
+            createTable(tl, entry);
         }
     }
 
@@ -83,9 +72,30 @@ public class MainScreenActivity extends AppCompatActivity {
 
     public void clearTable() {
         TableLayout tl = findViewById(R.id.tableLayout);
-        TableRow tr = findViewById(R.id.row1);
+        TableRow row1 = findViewById(R.id.row1);
+        TextView id = new TextView(this);
+        id.setPadding(5, 5, 5, 5);
+        id.setBackgroundColor(Color.LTGRAY);
+        TextView dm = new TextView(this);
+        dm.setBackgroundColor(Color.GRAY);
+        dm.setPadding(5, 5, 5, 5);
+        TextView un = new TextView(this);
+        un.setBackgroundColor(Color.LTGRAY);
+        un.setPadding(5, 5, 5, 5);
+        TextView pw = new TextView(this);
+        pw.setBackgroundColor(Color.GRAY);
+        pw.setPadding(5, 5, 5, 5);
+        id.setText("Index");
+        dm.setText("Domain");
+        un.setText("Username");
+        pw.setText("Password");
+        row1.removeAllViews();
+        row1.addView(id);
+        row1.addView(dm);
+        row1.addView(un);
+        row1.addView(pw);
         tl.removeAllViews();
-        tl.addView(tr);
+        tl.addView(row1);
     }
 
     @Override
@@ -101,54 +111,20 @@ public class MainScreenActivity extends AppCompatActivity {
             fileData.add(e);
             TableLayout tl = findViewById(R.id.tableLayout);
             clearTable();
-            int i = 0;
             for (PasswordEntry entry : fileData) {
-                i++;
-                TableRow tr = new TableRow(this);
-                tr.setId(i);
-                TextView id = new TextView(this);
-                id.setText(Integer.toString(entry.index));
-                tr.addView(id);
-                TextView dom = new TextView(this);
-                dom.setText(entry.domain);
-                tr.addView(dom);
-                TextView un = new TextView(this);
-                un.setText(entry.username);
-                tr.addView(un);
-                TextView pwd = new TextView(this);
-                pwd.setText(entry.password);
-                tr.addView(pwd);
-
-                tl.addView(tr);
+                createTable(tl, entry);
             }
         } else if (requestCode == 1) {
             int i = Integer.parseInt(data.getStringExtra("id"));
             ArrayList<PasswordEntry> temp = new ArrayList<>();
             TableLayout tl = findViewById(R.id.tableLayout);
             clearTable();
-            int i2 = 0;
             for (PasswordEntry entry : fileData) {
                 if (entry.index != i) {
                     if (entry.index > i) {
                         entry.index--;
                     }
-                    i2++;
-                    TableRow tr = new TableRow(this);
-                    tr.setId(i2);
-                    TextView id = new TextView(this);
-                    id.setText(Integer.toString(entry.index));
-                    tr.addView(id);
-                    TextView dom = new TextView(this);
-                    dom.setText(entry.domain);
-                    tr.addView(dom);
-                    TextView un = new TextView(this);
-                    un.setText(entry.username);
-                    tr.addView(un);
-                    TextView pwd = new TextView(this);
-                    pwd.setText(entry.password);
-                    tr.addView(pwd);
-
-                    tl.addView(tr);
+                    createTable(tl, entry);
                     temp.add(entry);
                 }
             }
@@ -159,76 +135,25 @@ public class MainScreenActivity extends AppCompatActivity {
             if (i == 0) {
                 TableLayout tl = findViewById(R.id.tableLayout);
                 clearTable();
-                int i2 = 0;
                 for (PasswordEntry entry : fileData) {
                     if (entry.domain.equals(filter)) {
-                        i2++;
-                        TableRow tr = new TableRow(this);
-                        tr.setId(i2);
-                        TextView id = new TextView(this);
-                        id.setText(Integer.toString(entry.index));
-                        tr.addView(id);
-                        TextView dom = new TextView(this);
-                        dom.setText(entry.domain);
-                        tr.addView(dom);
-                        TextView un = new TextView(this);
-                        un.setText(entry.username);
-                        tr.addView(un);
-                        TextView pwd = new TextView(this);
-                        pwd.setText(entry.password);
-                        tr.addView(pwd);
-
-                        tl.addView(tr);
+                        createTable(tl, entry);
                     }
                 }
             } else if (i == 1) {
                 TableLayout tl = findViewById(R.id.tableLayout);
                 clearTable();
-                int i2 = 0;
                 for (PasswordEntry entry : fileData) {
                     if (entry.username.equals(filter)) {
-                        i2++;
-                        TableRow tr = new TableRow(this);
-                        tr.setId(i2);
-                        TextView id = new TextView(this);
-                        id.setText(Integer.toString(entry.index));
-                        tr.addView(id);
-                        TextView dom = new TextView(this);
-                        dom.setText(entry.domain);
-                        tr.addView(dom);
-                        TextView un = new TextView(this);
-                        un.setText(entry.username);
-                        tr.addView(un);
-                        TextView pwd = new TextView(this);
-                        pwd.setText(entry.password);
-                        tr.addView(pwd);
-
-                        tl.addView(tr);
+                        createTable(tl, entry);
                     }
                 }
             } else if (i == 2) {
                 TableLayout tl = findViewById(R.id.tableLayout);
                 clearTable();
-                int i2 = 0;
                 for (PasswordEntry entry : fileData) {
                     if (entry.password.equals(filter)) {
-                        i2++;
-                        TableRow tr = new TableRow(this);
-                        tr.setId(i2);
-                        TextView id = new TextView(this);
-                        id.setText(Integer.toString(entry.index));
-                        tr.addView(id);
-                        TextView dom = new TextView(this);
-                        dom.setText(entry.domain);
-                        tr.addView(dom);
-                        TextView un = new TextView(this);
-                        un.setText(entry.username);
-                        tr.addView(un);
-                        TextView pwd = new TextView(this);
-                        pwd.setText(entry.password);
-                        tr.addView(pwd);
-
-                        tl.addView(tr);
+                        createTable(tl, entry);
                     }
                 }
             }
@@ -277,25 +202,8 @@ public class MainScreenActivity extends AppCompatActivity {
     public void resetFilterButton(View view) {
         TableLayout tl = findViewById(R.id.tableLayout);
         clearTable();
-        int i2 = 0;
         for (PasswordEntry entry : fileData) {
-            i2++;
-            TableRow tr = new TableRow(this);
-            tr.setId(i2);
-            TextView id = new TextView(this);
-            id.setText(Integer.toString(entry.index));
-            tr.addView(id);
-            TextView dom = new TextView(this);
-            dom.setText(entry.domain);
-            tr.addView(dom);
-            TextView un = new TextView(this);
-            un.setText(entry.username);
-            tr.addView(un);
-            TextView pwd = new TextView(this);
-            pwd.setText(entry.password);
-            tr.addView(pwd);
-
-            tl.addView(tr);
+            createTable(tl, entry);
         }
     }
 
@@ -327,5 +235,30 @@ public class MainScreenActivity extends AppCompatActivity {
     public void copyButton(View view) {
         Intent intent = new Intent(this, CopyActivity.class);
         startActivityForResult(intent, 3);
+    }
+
+    private void createTable(TableLayout tl, PasswordEntry entry) {
+        TextView id = new TextView(this);
+        id.setPadding(5, 5, 5, 5);
+        id.setBackgroundColor(Color.LTGRAY);
+        TextView dm = new TextView(this);
+        dm.setBackgroundColor(Color.GRAY);
+        dm.setPadding(5, 5, 5, 5);
+        TextView un = new TextView(this);
+        un.setBackgroundColor(Color.LTGRAY);
+        un.setPadding(5, 5, 5, 5);
+        TextView pw = new TextView(this);
+        pw.setBackgroundColor(Color.GRAY);
+        pw.setPadding(5, 5, 5, 5);
+        id.setText(Integer.toString(entry.index));
+        dm.setText(entry.domain);
+        un.setText(entry.username);
+        pw.setText(entry.password);
+        TableRow tr = new TableRow(this);
+        tr.addView(id);
+        tr.addView(dm);
+        tr.addView(un);
+        tr.addView(pw);
+        tl.addView(tr);
     }
 }
