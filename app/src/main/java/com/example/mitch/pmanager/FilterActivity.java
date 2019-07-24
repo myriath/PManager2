@@ -30,7 +30,7 @@ public class FilterActivity extends AppCompatActivity {
         String index = d.getText().toString();
         intent.putExtra("filter", index);
         intent.putExtra("operation", "1");
-        setResult(2, intent);
+        setResult(RESULT_OK, intent);
         finish();
     }
 
@@ -40,7 +40,7 @@ public class FilterActivity extends AppCompatActivity {
         String index = d.getText().toString();
         intent.putExtra("filter", index);
         intent.putExtra("operation", "2");
-        setResult(2, intent);
+        setResult(RESULT_OK, intent);
         finish();
     }
 }

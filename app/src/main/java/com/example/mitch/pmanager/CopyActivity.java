@@ -30,7 +30,7 @@ public class CopyActivity extends AppCompatActivity {
         String index = d.getText().toString();
         intent.putExtra("copy", index);
         intent.putExtra("operation", "1");
-        setResult(3, intent);
+        setResult(RESULT_OK, intent);
         finish();
     }
 }

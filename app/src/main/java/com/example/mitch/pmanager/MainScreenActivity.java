@@ -5,15 +5,14 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 
 import java.io.File;
-import java.lang.reflect.Array;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -175,7 +174,7 @@ public class MainScreenActivity extends AppCompatActivity {
                         getSystemService(Context.CLIPBOARD_SERVICE);
                 for (PasswordEntry entry : fileData) {
                     if (entry.index == copy) {
-                        ClipData clip = ClipData.newPlainText("username", entry.password);
+                        ClipData clip = ClipData.newPlainText("password", entry.password);
                         assert clipboard != null;
                         clipboard.setPrimaryClip(clip);
                     }
