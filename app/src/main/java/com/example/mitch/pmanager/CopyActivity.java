@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.Toast;
 
 public class CopyActivity extends AppCompatActivity {
 
@@ -21,6 +22,8 @@ public class CopyActivity extends AppCompatActivity {
         intent.putExtra("copy", index);
         intent.putExtra("operation", "0");
         setResult(RESULT_OK, intent);
+        Toast.makeText(this, "Copied Username #" + index,
+                Toast.LENGTH_LONG).show();
         finish();
     }
 
@@ -31,6 +34,8 @@ public class CopyActivity extends AppCompatActivity {
         intent.putExtra("copy", index);
         intent.putExtra("operation", "1");
         setResult(RESULT_OK, intent);
+        Toast.makeText(this, "Copied Password #" + index,
+                Toast.LENGTH_LONG).show();
         finish();
     }
 }

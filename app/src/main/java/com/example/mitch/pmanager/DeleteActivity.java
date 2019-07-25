@@ -5,6 +5,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.Toast;
 
 public class DeleteActivity extends AppCompatActivity {
 
@@ -20,6 +21,8 @@ public class DeleteActivity extends AppCompatActivity {
         String index = d.getText().toString();
         intent.putExtra("id", index);
         setResult(RESULT_OK, intent);
+        Toast.makeText(this, "Deleted Entry #" + index,
+                Toast.LENGTH_LONG).show();
         finish();
     }
 }

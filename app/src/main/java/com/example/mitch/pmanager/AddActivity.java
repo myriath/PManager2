@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.Toast;
 
 public class AddActivity extends AppCompatActivity {
 
@@ -26,6 +27,8 @@ public class AddActivity extends AppCompatActivity {
         intent.putExtra("username", username);
         intent.putExtra("password", pass);
         setResult(RESULT_OK, intent);
+        Toast.makeText(this, "Added Entry",
+                Toast.LENGTH_LONG).show();
         finish();
     }
 }

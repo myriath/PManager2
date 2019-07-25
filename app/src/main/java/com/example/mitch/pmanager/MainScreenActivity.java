@@ -11,6 +11,7 @@ import android.view.View;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.File;
 import java.security.InvalidKeyException;
@@ -204,6 +205,8 @@ public class MainScreenActivity extends AppCompatActivity {
         for (PasswordEntry entry : fileData) {
             createTable(tl, entry);
         }
+        Toast.makeText(this, "Filter Reset",
+                Toast.LENGTH_LONG).show();
     }
 
     public void saveButton(View view) {
@@ -226,7 +229,11 @@ public class MainScreenActivity extends AppCompatActivity {
             if (!f.decrypt(file).split(System.lineSeparator())[0].equals(filename)) {
                 saveButton(view);
             }
+            Toast.makeText(this, "Saved",
+                    Toast.LENGTH_LONG).show();
         } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException e1) {
+            Toast.makeText(this, "Warning: File not Saved!",
+                    Toast.LENGTH_LONG).show();
             e1.printStackTrace();
         }
     }
