@@ -14,7 +14,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:ignore="GoogleAppIndexingWarning">
-        <activity android:name=".EditGenericFile"></activity>
+        <activity android:name=".EditGenericFileActivity"></activity>
         <activity android:name=".MainScreenActivity">
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER" />

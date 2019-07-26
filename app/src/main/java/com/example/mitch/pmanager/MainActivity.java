@@ -36,11 +36,10 @@ public class MainActivity extends AppCompatActivity {
     String genericText;
     public static final int REQUEST_WRITE_STORAGE = 0;
     public static final int REQUEST_READ_STORAGE = 1;
-    private boolean hasWritePerm = false;
-    private boolean hasReadPerm = false;
 
-    String outPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath() + "/PManagerOut/";
-    String inPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath() + "/PManagerIn/";
+    String downloadsFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath();
+    String outPath = downloadsFolder + "/PManagerOut/";
+    String inPath = downloadsFolder + "/PManagerIn/";
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
@@ -49,14 +48,20 @@ public class MainActivity extends AppCompatActivity {
             case REQUEST_WRITE_STORAGE: {
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    hasWritePerm = true;
+                    System.out.println("big mcthankies");
+                } else {
+                    Toast.makeText(this, "Please allow", Toast.LENGTH_LONG).show();
+                    checkWritePermission();
                 }
                 return;
             }
             case REQUEST_READ_STORAGE: {
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    hasReadPerm = true;
+                    System.out.println("big mcthankies");
+                } else {
+                    Toast.makeText(this, "Please allow", Toast.LENGTH_LONG).show();
+                    checkReadPermission();
                 }
             }
         }
@@ -65,26 +70,16 @@ public class MainActivity extends AppCompatActivity {
     public void checkReadPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
-            if (!ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.READ_EXTERNAL_STORAGE)) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_READ_STORAGE);
-            }
-        } else {
-            hasReadPerm = true;
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_READ_STORAGE);
         }
     }
 
     public void checkWritePermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
-            if (!ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_WRITE_STORAGE);
-            }
-        } else {
-            hasWritePerm = true;
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_WRITE_STORAGE);
         }
     }
 
@@ -92,14 +87,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
-        
+        checkReadPermission();
+        checkWritePermission();
+
     }
 
     public void deleteFile(View view) {
         EditText fn = findViewById(R.id.filenameField);
         String file = fn.getText().toString() + ".jpweds";
-        File root = new File(this.getFilesDir(), "PManager");
-        File input = new File(root, file);
+        File input = new File(getRoot(), file);
         if (input.delete()) {
             System.out.println("deleted");
             Toast.makeText(this, "File Deleted",
@@ -114,7 +110,7 @@ public class MainActivity extends AppCompatActivity {
     public void createDirs(View view) {
         File inDir = new File(inPath);
         File outDir = new File(outPath);
-        try{
+        try {
             if (outDir.mkdirs()) {
                 System.out.println("Directory created");
             } else {
@@ -127,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
             }
             Toast.makeText(this, "Folders Created",
                     Toast.LENGTH_LONG).show();
-        } catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(this, "Warning: Folders not Created!",
                     Toast.LENGTH_LONG).show();
@@ -137,8 +133,7 @@ public class MainActivity extends AppCompatActivity {
     public void importFile(View view) {
         EditText fn = findViewById(R.id.filenameField);
         String file = fn.getText().toString() + ".jpweds";
-        File root = new File(this.getFilesDir(), "PManager");
-        File input = new File(root, file);
+        File input = new File(getRoot(), file);
         String sourcePath = inPath + file;
         String destinationPath = input.getAbsolutePath();
 
@@ -174,8 +169,7 @@ public class MainActivity extends AppCompatActivity {
     public void exportFile(View view) {
         EditText fn = findViewById(R.id.filenameField);
         String file = fn.getText().toString() + ".jpweds";
-        File root = new File(this.getFilesDir(), "PManager");
-        File input = new File(root, file);
+        File input = new File(getRoot(), file);
         String sourcePath = input.getAbsolutePath();
         String destinationPath = outPath + file;
 
@@ -208,48 +202,36 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void openGeneric (View view) {
-        Intent intent = new Intent(this, EditGenericFile.class);
+    public void openGeneric(View view) {
+        Intent intent = new Intent(this, EditGenericFileActivity.class);
         EditText fn = findViewById(R.id.filenameField);
         EditText pd = findViewById(R.id.passwordField);
         filename = fn.getText().toString() + ".jpweds";
         password = pd.getText().toString();
-        checkWritePermission();
-        File root = new File(this.getFilesDir(), "PManager");
-        if (!root.exists()) {
-            if (hasWritePerm) {
-                if (root.mkdirs()) {
-                    System.out.println("yeet");
-                }
-            }
-        }
-        out = new File(root, filename);
+        out = new File(getRoot(), filename);
         boolean exists = out.exists();
         try {
             if (exists) {
-                checkReadPermission();
-                if (hasReadPerm) {
-                    AES decrypt;
-                    StringBuilder decrypted;
-                    try {
-                        decrypt = new AES(AES.pad(password));
-                        decrypted = new StringBuilder();
-                        String text = decrypt.decrypt(out);
-                        splitFile = text.split(System.lineSeparator());
-                        for (String s : splitFile) {
-                            if (!s.equals(splitFile[0])) {
-                                decrypted.append(s);
-                                if (!s.equals(splitFile[splitFile.length-1])) {
-                                    decrypted.append(System.lineSeparator());
-                                }
+                AES decrypt;
+                StringBuilder decrypted;
+                try {
+                    decrypt = new AES(AES.pad(password));
+                    decrypted = new StringBuilder();
+                    String text = decrypt.decrypt(out);
+                    splitFile = text.split(System.lineSeparator());
+                    for (String s : splitFile) {
+                        if (!s.equals(splitFile[0])) {
+                            decrypted.append(s);
+                            if (!s.equals(splitFile[splitFile.length - 1])) {
+                                decrypted.append(System.lineSeparator());
                             }
                         }
-                        genericText = decrypted.toString();
-                    } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
-                        Toast.makeText(this, "Wrong Password!",
-                                Toast.LENGTH_LONG).show();
-                        e.printStackTrace();
                     }
+                    genericText = decrypted.toString();
+                } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
+                    Toast.makeText(this, "Wrong Password!",
+                            Toast.LENGTH_LONG).show();
+                    e.printStackTrace();
                 }
                 if (splitFile[0].equals(filename)) {
                     intent.putExtra("file", out);
@@ -265,32 +247,26 @@ public class MainActivity extends AppCompatActivity {
                             Toast.LENGTH_LONG).show();
                 }
             } else {
-                checkWritePermission();
-                if (hasWritePerm) {
-                    AES newFile = new AES(AES.pad(password));
-                    newFile.encryptString(filename, out);
-                    Toast.makeText(this, "New File Created",
-                            Toast.LENGTH_LONG).show();
-                }
-                checkReadPermission();
-                if (hasReadPerm) {
-                    AES decrypt;
-                    StringBuilder decrypted;
-                    try {
-                        decrypt = new AES(AES.pad(password));
-                        decrypted = new StringBuilder(decrypt.decrypt(out));
-                        splitFile = decrypted.toString().split(System.lineSeparator());
-                        for (String s : splitFile) {
-                            if (!s.equals(splitFile[0])) {
-                                decrypted.append(s);
-                            }
+                AES newFile = new AES(AES.pad(password));
+                newFile.encryptString(filename, out);
+                Toast.makeText(this, "New File Created",
+                        Toast.LENGTH_LONG).show();
+                AES decrypt;
+                StringBuilder decrypted;
+                try {
+                    decrypt = new AES(AES.pad(password));
+                    decrypted = new StringBuilder(decrypt.decrypt(out));
+                    splitFile = decrypted.toString().split(System.lineSeparator());
+                    for (String s : splitFile) {
+                        if (!s.equals(splitFile[0])) {
+                            decrypted.append(s);
                         }
-                        genericText = decrypted.toString();
-                    } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
-                        Toast.makeText(this, "Wrong Password!",
-                                Toast.LENGTH_LONG).show();
-                        e.printStackTrace();
                     }
+                    genericText = decrypted.toString();
+                } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
+                    Toast.makeText(this, "Wrong Password!",
+                            Toast.LENGTH_LONG).show();
+                    e.printStackTrace();
                 }
                 if (splitFile[0].equals(filename)) {
                     intent.putExtra("file", out);
@@ -310,38 +286,39 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @NonNull
+    private File getRoot() {
+        File root = new File(this.getFilesDir(), "PManager");
+        if (!root.exists()) {
+            if (root.mkdirs()) {
+                System.out.println("yeet");
+            }
+        }
+        return root;
+    }
+
     public void openFile(View view) {
         Intent intent = new Intent(this, MainScreenActivity.class);
         EditText fn = findViewById(R.id.filenameField);
         EditText pd = findViewById(R.id.passwordField);
         filename = fn.getText().toString() + ".jpweds";
         password = pd.getText().toString();
-        checkWritePermission();
-        File root = new File(this.getFilesDir(), "PManager");
-        if (!root.exists()) {
-            if (hasWritePerm) {
-                root.mkdirs();
-            }
-        }
-        out = new File(root, filename);
+        out = new File(getRoot(), filename);
         boolean exists = out.exists();
         try {
             if (exists) {
-                checkReadPermission();
-                if (hasReadPerm) {
-                    LibraryFile f = new LibraryFile(out);
-                    AES decrypt;
-                    String decrypted;
-                    try {
-                        decrypt = new AES(AES.pad(password));
-                        decrypted = decrypt.decrypt(out);
-                        splitFile = decrypted.split(System.lineSeparator());
-                        fileData = f.read(password);
-                    } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
-                        Toast.makeText(this, "Wrong Password!",
-                                Toast.LENGTH_LONG).show();
-                        e.printStackTrace();
-                    }
+                LibraryFile f = new LibraryFile(out);
+                AES decrypt;
+                String decrypted;
+                try {
+                    decrypt = new AES(AES.pad(password));
+                    decrypted = decrypt.decrypt(out);
+                    splitFile = decrypted.split(System.lineSeparator());
+                    fileData = f.read(password);
+                } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
+                    Toast.makeText(this, "Wrong Password!",
+                            Toast.LENGTH_LONG).show();
+                    e.printStackTrace();
                 }
                 if (splitFile[0].equals(filename)) {
                     intent.putExtra("file", out);
@@ -356,28 +333,22 @@ public class MainActivity extends AppCompatActivity {
                             Toast.LENGTH_LONG).show();
                 }
             } else {
-                checkWritePermission();
-                if (hasWritePerm) {
-                    AES newFile = new AES(AES.pad(password));
-                    newFile.encryptString(filename, out);
-                    Toast.makeText(this, "New File Created",
+                AES newFile = new AES(AES.pad(password));
+                newFile.encryptString(filename, out);
+                Toast.makeText(this, "New File Created",
+                        Toast.LENGTH_LONG).show();
+                LibraryFile f = new LibraryFile(out);
+                AES decrypt;
+                String decrypted;
+                try {
+                    decrypt = new AES(AES.pad(password));
+                    decrypted = decrypt.decrypt(out);
+                    splitFile = decrypted.split(System.lineSeparator());
+                    fileData = f.read(password);
+                } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
+                    Toast.makeText(this, "Wrong Password!",
                             Toast.LENGTH_LONG).show();
-                }
-                checkReadPermission();
-                if (hasReadPerm) {
-                    LibraryFile f = new LibraryFile(out);
-                    AES decrypt;
-                    String decrypted;
-                    try {
-                        decrypt = new AES(AES.pad(password));
-                        decrypted = decrypt.decrypt(out);
-                        splitFile = decrypted.split(System.lineSeparator());
-                        fileData = f.read(password);
-                    } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
-                        Toast.makeText(this, "Wrong Password!",
-                                Toast.LENGTH_LONG).show();
-                        e.printStackTrace();
-                    }
+                    e.printStackTrace();
                 }
                 if (splitFile[0].equals(filename)) {
                     intent.putExtra("file", out);

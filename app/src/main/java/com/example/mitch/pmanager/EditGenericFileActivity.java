@@ -14,7 +14,7 @@ import java.util.ArrayList;
 
 import javax.crypto.NoSuchPaddingException;
 
-public class EditGenericFile extends AppCompatActivity {
+public class EditGenericFileActivity extends AppCompatActivity {
 
     private static final String STATE_FILEDATA = "filedata";
     private static final String STATE_FILENAME = "filename";

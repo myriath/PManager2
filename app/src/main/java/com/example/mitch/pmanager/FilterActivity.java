@@ -15,31 +15,23 @@ public class FilterActivity extends AppCompatActivity {
     }
 
     public void domainButton(View view) {
-        Intent intent = new Intent(this, MainScreenActivity.class);
-        EditText d = findViewById(R.id.filterField);
-        String index = d.getText().toString();
-        intent.putExtra("filter", index);
-        intent.putExtra("operation", "0");
-        setResult(RESULT_OK, intent);
-        finish();
+        filter("0");
     }
 
     public void usernameButton(View view) {
-        Intent intent = new Intent(this, MainScreenActivity.class);
-        EditText d = findViewById(R.id.filterField);
-        String index = d.getText().toString();
-        intent.putExtra("filter", index);
-        intent.putExtra("operation", "1");
-        setResult(RESULT_OK, intent);
-        finish();
+        filter("1");
     }
 
     public void passwordButton(View view) {
+        filter("2");
+    }
+
+    private void filter(String operation) {
         Intent intent = new Intent(this, MainScreenActivity.class);
         EditText d = findViewById(R.id.filterField);
         String index = d.getText().toString();
         intent.putExtra("filter", index);
-        intent.putExtra("operation", "2");
+        intent.putExtra("operation", operation);
         setResult(RESULT_OK, intent);
         finish();
     }

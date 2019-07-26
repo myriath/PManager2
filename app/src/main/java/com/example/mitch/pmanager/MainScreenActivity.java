@@ -22,6 +22,10 @@ import javax.crypto.NoSuchPaddingException;
 
 public class MainScreenActivity extends AppCompatActivity {
 
+    public static final int REQUEST_ADD = 0;
+    public static final int REQUEST_DELETE = 1;
+    public static final int REQUEST_FILTER = 2;
+    public static final int REQUEST_COPY = 3;
     File file;
     String filename;
     String password;
@@ -52,16 +56,6 @@ public class MainScreenActivity extends AppCompatActivity {
         for (PasswordEntry entry : fileData) {
             createTable(tl, entry);
         }
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
     }
 
     @Override
@@ -103,100 +97,121 @@ public class MainScreenActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode != RESULT_OK) return;
 
-        if (requestCode == 0) {
-            String d = data.getStringExtra("domain");
-            String u = data.getStringExtra("username");
-            String p = data.getStringExtra("password");
-            PasswordEntry e = new PasswordEntry(d, u, p, fileData.size() + 1);
-            fileData.add(e);
-            TableLayout tl = findViewById(R.id.tableLayout);
-            clearTable();
-            for (PasswordEntry entry : fileData) {
-                createTable(tl, entry);
-            }
-        } else if (requestCode == 1) {
-            int i = Integer.parseInt(data.getStringExtra("id"));
-            ArrayList<PasswordEntry> temp = new ArrayList<>();
-            TableLayout tl = findViewById(R.id.tableLayout);
-            clearTable();
-            for (PasswordEntry entry : fileData) {
-                if (entry.index != i) {
-                    if (entry.index > i) {
-                        entry.index--;
-                    }
+        switch (requestCode) {
+            case REQUEST_ADD: {
+                String d = data.getStringExtra("domain");
+                String u = data.getStringExtra("username");
+                String p = data.getStringExtra("password");
+                PasswordEntry e = new PasswordEntry(d, u, p, fileData.size() + 1);
+                fileData.add(e);
+                TableLayout tl = findViewById(R.id.tableLayout);
+                clearTable();
+                for (PasswordEntry entry : fileData) {
                     createTable(tl, entry);
-                    temp.add(entry);
                 }
+                break;
             }
-            fileData = temp;
-        } else if (requestCode == 2) {
-            int i = Integer.parseInt(data.getStringExtra("operation"));
-            String filter = data.getStringExtra("filter");
-            if (i == 0) {
+            case REQUEST_DELETE: {
+                int id = Integer.parseInt(data.getStringExtra("id"));
+                ArrayList<PasswordEntry> temp = new ArrayList<>();
                 TableLayout tl = findViewById(R.id.tableLayout);
                 clearTable();
                 for (PasswordEntry entry : fileData) {
-                    if (entry.domain.equals(filter)) {
+                    if (entry.index != id) {
+                        if (entry.index > id) {
+                            entry.index--;
+                        }
                         createTable(tl, entry);
+                        temp.add(entry);
                     }
                 }
-            } else if (i == 1) {
-                TableLayout tl = findViewById(R.id.tableLayout);
-                clearTable();
-                for (PasswordEntry entry : fileData) {
-                    if (entry.username.equals(filter)) {
-                        createTable(tl, entry);
-                    }
-                }
-            } else if (i == 2) {
-                TableLayout tl = findViewById(R.id.tableLayout);
-                clearTable();
-                for (PasswordEntry entry : fileData) {
-                    if (entry.password.equals(filter)) {
-                        createTable(tl, entry);
-                    }
-                }
+                fileData = temp;
+                break;
             }
-        } else if (requestCode == 3) {
-            int i = Integer.parseInt(data.getStringExtra("operation"));
-            int copy = Integer.parseInt(data.getStringExtra("copy"));
-            if (i == 0) {
-                ClipboardManager clipboard = (ClipboardManager)
-                        getSystemService(Context.CLIPBOARD_SERVICE);
-                for (PasswordEntry entry : fileData) {
-                    if (entry.index == copy) {
-                        ClipData clip = ClipData.newPlainText("username", entry.username);
-                        assert clipboard != null;
-                        clipboard.setPrimaryClip(clip);
+            case REQUEST_FILTER: {
+                int operation = Integer.parseInt(data.getStringExtra("operation"));
+                String filter = data.getStringExtra("filter");
+                switch (operation) {
+                    case 0: {
+                        TableLayout tl = findViewById(R.id.tableLayout);
+                        clearTable();
+                        for (PasswordEntry entry : fileData) {
+                            if (entry.domain.equals(filter)) {
+                                createTable(tl, entry);
+                            }
+                        }
+                        break;
+                    }
+                    case 1: {
+                        TableLayout tl = findViewById(R.id.tableLayout);
+                        clearTable();
+                        for (PasswordEntry entry : fileData) {
+                            if (entry.username.equals(filter)) {
+                                createTable(tl, entry);
+                            }
+                        }
+                        break;
+                    }
+                    case 2: {
+                        TableLayout tl = findViewById(R.id.tableLayout);
+                        clearTable();
+                        for (PasswordEntry entry : fileData) {
+                            if (entry.password.equals(filter)) {
+                                createTable(tl, entry);
+                            }
+                        }
+                        break;
                     }
                 }
-            } else if (i == 1) {
-                ClipboardManager clipboard = (ClipboardManager)
-                        getSystemService(Context.CLIPBOARD_SERVICE);
-                for (PasswordEntry entry : fileData) {
-                    if (entry.index == copy) {
-                        ClipData clip = ClipData.newPlainText("password", entry.password);
-                        assert clipboard != null;
-                        clipboard.setPrimaryClip(clip);
+                break;
+            }
+            case REQUEST_COPY: {
+                int operation = Integer.parseInt(data.getStringExtra("operation"));
+                int copy = Integer.parseInt(data.getStringExtra("copy"));
+                if (operation == 0) {
+                    ClipboardManager clipboard = (ClipboardManager)
+                            getSystemService(Context.CLIPBOARD_SERVICE);
+                    for (PasswordEntry entry : fileData) {
+                        if (entry.index == copy) {
+                            ClipData clip = ClipData.newPlainText("username", entry.username);
+                            assert clipboard != null;
+                            clipboard.setPrimaryClip(clip);
+                        }
+                    }
+                } else if (operation == 1) {
+                    ClipboardManager clipboard = (ClipboardManager)
+                            getSystemService(Context.CLIPBOARD_SERVICE);
+                    for (PasswordEntry entry : fileData) {
+                        if (entry.index == copy) {
+                            ClipData clip = ClipData.newPlainText("password", entry.password);
+                            assert clipboard != null;
+                            clipboard.setPrimaryClip(clip);
+                        }
                     }
                 }
+                break;
             }
         }
     }
 
     public void addButton(View view) {
         Intent intent = new Intent(this, AddActivity.class);
-        startActivityForResult(intent, 0);
+        startActivityForResult(intent, REQUEST_ADD);
     }
 
     public void deleteButton(View view) {
         Intent intent = new Intent(this, DeleteActivity.class);
-        startActivityForResult(intent, 1);
+        startActivityForResult(intent, REQUEST_DELETE);
     }
 
     public void filterButton(View view) {
         Intent intent = new Intent(this, FilterActivity.class);
-        startActivityForResult(intent, 2);
+        startActivityForResult(intent, REQUEST_FILTER);
+    }
+
+    public void copyButton(View view) {
+        Intent intent = new Intent(this, CopyActivity.class);
+        startActivityForResult(intent, REQUEST_COPY);
     }
 
     public void resetFilterButton(View view) {
@@ -236,11 +251,6 @@ public class MainScreenActivity extends AppCompatActivity {
                     Toast.LENGTH_LONG).show();
             e1.printStackTrace();
         }
-    }
-
-    public void copyButton(View view) {
-        Intent intent = new Intent(this, CopyActivity.class);
-        startActivityForResult(intent, 3);
     }
 
     private void createTable(TableLayout tl, PasswordEntry entry) {

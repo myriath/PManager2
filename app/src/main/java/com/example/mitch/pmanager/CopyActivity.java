@@ -16,25 +16,21 @@ public class CopyActivity extends AppCompatActivity {
     }
 
     public void copyUsernameButton(View view) {
-        Intent intent = new Intent(this, MainScreenActivity.class);
-        EditText d = findViewById(R.id.copyIndexField);
-        String index = d.getText().toString();
-        intent.putExtra("copy", index);
-        intent.putExtra("operation", "0");
-        setResult(RESULT_OK, intent);
-        Toast.makeText(this, "Copied Username #" + index,
-                Toast.LENGTH_LONG).show();
-        finish();
+        copyAndToast("0", "Copied Username #");
     }
 
     public void copyPasswordButton(View view) {
+        copyAndToast("1", "Copied Password #");
+    }
+
+    private void copyAndToast(String operation, String message) {
         Intent intent = new Intent(this, MainScreenActivity.class);
         EditText d = findViewById(R.id.copyIndexField);
         String index = d.getText().toString();
         intent.putExtra("copy", index);
-        intent.putExtra("operation", "1");
+        intent.putExtra("operation", operation);
         setResult(RESULT_OK, intent);
-        Toast.makeText(this, "Copied Password #" + index,
+        Toast.makeText(this, message + index,
                 Toast.LENGTH_LONG).show();
         finish();
     }
