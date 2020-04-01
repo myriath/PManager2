@@ -175,7 +175,7 @@ public class MainScreenActivity extends AppCompatActivity {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
                 EditText ft = dialogLayout.findViewById(R.id.dialog_filter);
-                String filter = ft.getText().toString();
+                String filter = ft.getText().toString().toLowerCase();
                 TableLayout tl = findViewById(R.id.tableLayout);
                 clearTable();
 
@@ -185,19 +185,19 @@ public class MainScreenActivity extends AppCompatActivity {
 
                 if (domainButton.isChecked()) {
                     for (PasswordEntry entry : fileData) {
-                        if (entry.domain.equals(filter)) {
+                        if (entry.domain.toLowerCase().equals(filter)) {
                             createTable(tl, entry);
                         }
                     }
                 } else if (usernameButton.isChecked()) {
                     for (PasswordEntry entry : fileData) {
-                        if (entry.username.equals(filter)) {
+                        if (entry.username.toLowerCase().equals(filter)) {
                             createTable(tl, entry);
                         }
                     }
                 } else if (passwordButton.isChecked()) {
                     for (PasswordEntry entry : fileData) {
-                        if (entry.password.equals(filter)) {
+                        if (entry.password.toLowerCase().equals(filter)) {
                             createTable(tl, entry);
                         }
                     }
