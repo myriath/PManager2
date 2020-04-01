@@ -1,11 +1,15 @@
-package com.example.mitch.pmanager;
+package com.example.mitch.pmanager.activities;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.example.mitch.pmanager.R;
+import com.example.mitch.pmanager.background.AES;
 
 import java.io.File;
 import java.security.InvalidKeyException;
@@ -27,6 +31,7 @@ public class EditGenericFileActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         setContentView(R.layout.activity_edit_generic_file);
         Bundle bd = getIntent().getExtras();
         if (bd != null) {
@@ -68,5 +73,12 @@ public class EditGenericFileActivity extends AppCompatActivity {
                     Toast.LENGTH_LONG).show();
             e1.printStackTrace();
         }
+    }
+
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        setResult(MainActivity.EXIT);
+        finish();
     }
 }
