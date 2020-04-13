@@ -43,7 +43,6 @@ public class MainActivity extends AppCompatActivity {
     String password;
     File out;
     ArrayList<PasswordEntry> fileData;
-    String genericText;
     public static final int REQUEST_WRITE_STORAGE = 0;
     public static final int REQUEST_READ_STORAGE = 1;
     public static final int EXIT = 2;
@@ -287,12 +286,6 @@ public class MainActivity extends AppCompatActivity {
     private String getFilename() {
         EditText fn = findViewById(R.id.filenameField);
         return fn.getText().toString() + ".jpweds";
-    }
-
-    @NonNull
-    private String getFilenameNoExtension() {
-        EditText fn = findViewById(R.id.filenameField);
-        return fn.getText().toString();
     }
 
     @NonNull
