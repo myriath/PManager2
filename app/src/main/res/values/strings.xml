@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">PManager</string>
+    <string name="table_index">Index</string>
+    <string name="table_domain">Domain</string>
+    <string name="table_username">Username</string>
+    <string name="table_password">Password</string>
 </resources>

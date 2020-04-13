@@ -1,23 +1,23 @@
-package com.example.mitch.pmanager;
+package com.example.mitch.pmanager.background;
 
-import javax.crypto.NoSuchPaddingException;
+import com.example.mitch.pmanager.objects.PasswordEntry;
 
 import java.io.File;
-import java.lang.reflect.Array;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.List;
 
-class LibraryFile {
+import javax.crypto.NoSuchPaddingException;
+
+public class LibraryFile {
 
     private File out;
 
-    LibraryFile(File filename) {
+    public LibraryFile(File filename) {
         this.out = filename;
     }
 
-    ArrayList<PasswordEntry> read(String key) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
+    public ArrayList<PasswordEntry> read(String key) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
         ArrayList<PasswordEntry> entries = new ArrayList<>();
         AES aes = new AES(AES.pad(key));
         String decrypted = aes.decrypt(out);
