@@ -38,11 +38,6 @@ import javax.crypto.NoSuchPaddingException;
 
 public class MainActivity extends AppCompatActivity {
 
-
-    String filename; // todo I don't think these need to be class level variables. You always seem to
-    // todo call setupOpenFile before you use them, so they can just be stored as local variables in
-    // todo those methods
-    String password;
     File out;
     ArrayList<PasswordEntry> fileData;
     public static final int REQUEST_WRITE_STORAGE = 0;
@@ -58,14 +53,12 @@ public class MainActivity extends AppCompatActivity {
                                            @NonNull String[] permissions, @NonNull int[] grantResults) {
         switch (requestCode) {
             case REQUEST_WRITE_STORAGE: {
-// todo It looks like in both cases the if part is the same. I suggest pulling the if part outside of
-// todo the switch and do it once, inside the if you can return since you'll be done. That will simplify the switch.
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     System.out.println("thanks");
                 } else {
                     toast("Please allow", this);
-                    checkWritePermission();
+                    checkPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE);
                 }
                 return;
             }
@@ -75,28 +68,30 @@ public class MainActivity extends AppCompatActivity {
                     System.out.println("thanks");
                 } else {
                     toast("Please allow", this);
-                    checkReadPermission();
+                    checkPermission(Manifest.permission.READ_EXTERNAL_STORAGE);
                 }
             }
         }
     }
 
-    // todo Without too much effort, I think you could simplify these two methods into one, passing in
-// todo the request and the permission requested.
-// todo Also, I think this could/should be private.
-    public void checkReadPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_READ_STORAGE);
-        }
-    }
-
-    public void checkWritePermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_WRITE_STORAGE);
+    public void checkPermission(String permission) {
+        switch (permission) {
+            case (Manifest.permission.READ_EXTERNAL_STORAGE): {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_READ_STORAGE);
+                }
+                break;
+            }
+            case (Manifest.permission.WRITE_EXTERNAL_STORAGE): {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_WRITE_STORAGE);
+                }
+                break;
+            }
         }
     }
 
@@ -105,8 +100,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         setContentView(R.layout.activity_login);
-        checkReadPermission();
-        checkWritePermission();
+        checkPermission(Manifest.permission.READ_EXTERNAL_STORAGE);
+        checkPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE);
     }
 
     @Override
@@ -117,21 +112,18 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onUserLeaveHint() {
-        // todo When does this get called? I'm not sure you tested it, because it looks like the super call throws an exception.
         super.onUserLeaveHint();
         resetFields();
     }
 
-    // todo Do these methods have to be public, or could they be private?
     public void deleteFile(View view) {
-        setupOpenFile();
+        String[] strs = setupOpenFile();
+        final String filename = strs[0];
         DecryptionObject decryptionObject;
-        // todo It's kind of funny how you're trying to change Java to be like Python. :-)
         final Context self = this;
         try {
             decryptionObject = decryptFile(out, getPassword(), filename);
-            if (decryptionObject.correctPassword) { // todo It looks like if you decrypt this and it
-                // todo doesn't have the right password, it won't toast "Wrong password".
+            if (decryptionObject.correctPassword) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle("Are you sure?");
                 builder.setMessage("Re-Enter Password");
@@ -143,9 +135,8 @@ public class MainActivity extends AppCompatActivity {
                         EditText pd = dialogLayout.findViewById(R.id.dialogPassword);
                         String pwd = pd.getText().toString();
 
-                        DecryptionObject decryptionObject; // todo I think this could be inside the try and combined with assignment.
                         try {
-                            decryptionObject = decryptFile(out, pwd, filename);
+                            DecryptionObject decryptionObject = decryptFile(out, pwd, filename);
                             if (decryptionObject.correctPassword) {
                                 if (out.delete()) {
                                     toast("File Deleted", self);
@@ -254,31 +245,29 @@ public class MainActivity extends AppCompatActivity {
 
     public void openFile(View view) {
         Intent intent = new Intent(this, MainScreenActivity.class);
-        setupOpenFile();
+        String[] strs = setupOpenFile();
+        String filename = strs[0];
+        String password = strs[1];
         resetFields();
         boolean exists = out.exists();
-        DecryptionObject decryptionObject; // todo only used inside the try
         try {
+            DecryptionObject decryptionObject;
             if (exists) {
                 decryptionObject = decryptFile(out, password, filename);
                 if (decryptionObject.correctPassword) {
                     LibraryFile f = new LibraryFile(out);
                     fileData = f.read(password);
-                    setupIntent(intent, "Opened!");
+                    setupIntent(intent, "Opened!", filename, password);
                     startActivity(intent);
                 }
             } else {
                 AES newFile = new AES(AES.pad(password));
-                // todo newFile isn't used after you set it. Does it do anything? How does the new
-                // todo filename get in there? If it isn't used, since filename is decrypted in both
-                // todo the if and the else, you probably don't need to do the decrypt in both, you
-                // todo could do it once before the if.
                 newFile.encryptString(filename, out);
                 decryptionObject = decryptFile(out, password, filename);
-                if (decryptionObject.correctPassword) { // todo Also, this if is the same in both the outer if and else.
+                if (decryptionObject.correctPassword) {
                     LibraryFile f = new LibraryFile(out);
                     fileData = f.read(password);
-                    setupIntent(intent, "New File Created!");
+                    setupIntent(intent, "New File Created!", filename, password);
                     startActivity(intent);
                 }
             }
@@ -287,7 +276,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void setupIntent(Intent intent, @Nullable String message) {
+    private void setupIntent(Intent intent, @Nullable String message, String filename, String password) {
         intent.putExtra("file", out);
         intent.putExtra("filename", filename);
         intent.putExtra("password", password);
@@ -320,42 +309,33 @@ public class MainActivity extends AppCompatActivity {
         return root;
     }
 
-    // todo I'm not sure name is needed as an argument here. It looks like you start the delete and open methods by
-    // todo calling setupOpenFile, which gets the filename and puts it into out. But then whenever
-    // todo you call this method, you pass in out and filename into this, so won't name here always
-    // todo be the same as the filename inside file?
     private DecryptionObject decryptFile(File file, String pwd, String name) {
-        String[] splitFile = {};
+        String[] splitFile;
         boolean correctPassword = false;
-        boolean error = false;
         String data = "";
-        AES decrypt; // todo This isn't used outside of the try, so it should be defined inside it
-        // todo and combined with the assignment.
+
         try {
-            decrypt = new AES(AES.pad(pwd));
+            AES decrypt = new AES(AES.pad(pwd));
             data = decrypt.decrypt(file);
             splitFile = data.split(System.lineSeparator());
-        } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
-            toast("Wrong Password!", this);
-            error = true;
-        }
 
-        if (!error) { // todo I think the stuff in this if can be moved to the end of the try section,
-            // todo since if there's an exception, it stops at that line and goes into the catch.
             if (splitFile[0].equals(name)) {
                 correctPassword = true;
             } else {
                 toast("Wrong Password!", this);
             }
+        } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
+            toast("Wrong Password!", this);
         }
 
-        return new DecryptionObject(data, correctPassword, filename);
+        return new DecryptionObject(data, correctPassword, name);
     }
 
-    private void setupOpenFile() {
-        filename = getFilename();
-        password = getPassword();
+    private String[] setupOpenFile() {
+        String filename = getFilename();
+        String password = getPassword();
         out = new File(getRoot(), filename);
+        return new String[]{filename, password};
     }
 
     private void resetFields() {
