@@ -1,5 +1,6 @@
 //package com.example.mitch.pmanager;
 //
+// todo are you keeping this around just for reference?
 //import javax.crypto.NoSuchPaddingException;
 //import javax.swing.*;
 //import javax.swing.border.TitledBorder;

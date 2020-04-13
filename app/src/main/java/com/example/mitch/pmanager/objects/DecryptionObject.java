@@ -6,7 +6,7 @@ public class DecryptionObject {
     public boolean correctPassword;
 
     public DecryptionObject(String data, boolean correct, String name) {
-        this.correctPassword = correct;
+        this.correctPassword = correct; // todo It's nicer when you keep these in the same order that the method's arguments are in.
         this.data = data;
         this.name = name;
     }

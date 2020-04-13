@@ -294,7 +294,7 @@ public class MainScreenActivity extends AppCompatActivity {
             sb.append(str);
             sb.append('\0');
         }
-        AES f;
+        AES f; // todo should be inside the try
         try {
             f = new AES(AES.pad(password));
             f.encryptString(sb.toString(), file);

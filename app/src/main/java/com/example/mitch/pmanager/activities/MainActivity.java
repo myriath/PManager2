@@ -39,7 +39,9 @@ import javax.crypto.NoSuchPaddingException;
 public class MainActivity extends AppCompatActivity {
 
 
-    String filename;
+    String filename; // todo I don't think these need to be class level variables. You always seem to
+    // todo call setupOpenFile before you use them, so they can just be stored as local variables in
+    // todo those methods
     String password;
     File out;
     ArrayList<PasswordEntry> fileData;
@@ -56,6 +58,8 @@ public class MainActivity extends AppCompatActivity {
                                            @NonNull String[] permissions, @NonNull int[] grantResults) {
         switch (requestCode) {
             case REQUEST_WRITE_STORAGE: {
+// todo It looks like in both cases the if part is the same. I suggest pulling the if part outside of
+// todo the switch and do it once, inside the if you can return since you'll be done. That will simplify the switch.
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     System.out.println("thanks");
@@ -77,6 +81,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // todo Without too much effort, I think you could simplify these two methods into one, passing in
+// todo the request and the permission requested.
+// todo Also, I think this could/should be private.
     public void checkReadPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -110,17 +117,21 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onUserLeaveHint() {
+        // todo When does this get called? I'm not sure you tested it, because it looks like the super call throws an exception.
         super.onUserLeaveHint();
         resetFields();
     }
 
+    // todo Do these methods have to be public, or could they be private?
     public void deleteFile(View view) {
         setupOpenFile();
         DecryptionObject decryptionObject;
+        // todo It's kind of funny how you're trying to change Java to be like Python. :-)
         final Context self = this;
         try {
             decryptionObject = decryptFile(out, getPassword(), filename);
-            if (decryptionObject.correctPassword) {
+            if (decryptionObject.correctPassword) { // todo It looks like if you decrypt this and it
+                // todo doesn't have the right password, it won't toast "Wrong password".
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle("Are you sure?");
                 builder.setMessage("Re-Enter Password");
@@ -132,7 +143,7 @@ public class MainActivity extends AppCompatActivity {
                         EditText pd = dialogLayout.findViewById(R.id.dialogPassword);
                         String pwd = pd.getText().toString();
 
-                        DecryptionObject decryptionObject;
+                        DecryptionObject decryptionObject; // todo I think this could be inside the try and combined with assignment.
                         try {
                             decryptionObject = decryptFile(out, pwd, filename);
                             if (decryptionObject.correctPassword) {
@@ -246,7 +257,7 @@ public class MainActivity extends AppCompatActivity {
         setupOpenFile();
         resetFields();
         boolean exists = out.exists();
-        DecryptionObject decryptionObject;
+        DecryptionObject decryptionObject; // todo only used inside the try
         try {
             if (exists) {
                 decryptionObject = decryptFile(out, password, filename);
@@ -258,9 +269,13 @@ public class MainActivity extends AppCompatActivity {
                 }
             } else {
                 AES newFile = new AES(AES.pad(password));
+                // todo newFile isn't used after you set it. Does it do anything? How does the new
+                // todo filename get in there? If it isn't used, since filename is decrypted in both
+                // todo the if and the else, you probably don't need to do the decrypt in both, you
+                // todo could do it once before the if.
                 newFile.encryptString(filename, out);
                 decryptionObject = decryptFile(out, password, filename);
-                if (decryptionObject.correctPassword) {
+                if (decryptionObject.correctPassword) { // todo Also, this if is the same in both the outer if and else.
                     LibraryFile f = new LibraryFile(out);
                     fileData = f.read(password);
                     setupIntent(intent, "New File Created!");
@@ -305,12 +320,17 @@ public class MainActivity extends AppCompatActivity {
         return root;
     }
 
+    // todo I'm not sure name is needed as an argument here. It looks like you start the delete and open methods by
+    // todo calling setupOpenFile, which gets the filename and puts it into out. But then whenever
+    // todo you call this method, you pass in out and filename into this, so won't name here always
+    // todo be the same as the filename inside file?
     private DecryptionObject decryptFile(File file, String pwd, String name) {
         String[] splitFile = {};
         boolean correctPassword = false;
         boolean error = false;
         String data = "";
-        AES decrypt;
+        AES decrypt; // todo This isn't used outside of the try, so it should be defined inside it
+        // todo and combined with the assignment.
         try {
             decrypt = new AES(AES.pad(pwd));
             data = decrypt.decrypt(file);
@@ -320,7 +340,8 @@ public class MainActivity extends AppCompatActivity {
             error = true;
         }
 
-        if (!error) {
+        if (!error) { // todo I think the stuff in this if can be moved to the end of the try section,
+            // todo since if there's an exception, it stops at that line and goes into the catch.
             if (splitFile[0].equals(name)) {
                 correctPassword = true;
             } else {
