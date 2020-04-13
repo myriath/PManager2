@@ -242,43 +242,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void openGeneric(View view) {
-        Intent intent = new Intent(this, EditGenericFileActivity.class);
-        setupOpenFile();
-        resetFields();
-        boolean exists = out.exists();
-        DecryptionObject decryptionObject;
-        try {
-            if (exists) {
-                decryptionObject = decryptFile(out, password, filename);
-                genericText = decryptionObject.data;
-                toast("Opened!", this);
-                if (decryptionObject.correctPassword) {
-                    intent.putExtra("file", out);
-                    intent.putExtra("filename", filename);
-                    intent.putExtra("password", password);
-                    intent.putExtra("filedata", genericText);
-                    startActivity(intent);
-                }
-            } else {
-                AES newFile = new AES(AES.pad(password));
-                newFile.encryptString(filename, out);
-                decryptionObject = decryptFile(out, password, filename);
-                genericText = decryptionObject.data;
-                toast("New File Created!", this);
-                if (decryptionObject.correctPassword) {
-                    intent.putExtra("file", out);
-                    intent.putExtra("filename", filename);
-                    intent.putExtra("password", password);
-                    intent.putExtra("filedata", genericText);
-                    startActivity(intent);
-                }
-            }
-        } catch (Exception e1) {
-            toast("Wrong Password!", this);
-        }
-    }
-
     public void openFile(View view) {
         Intent intent = new Intent(this, MainScreenActivity.class);
         setupOpenFile();
@@ -327,6 +290,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @NonNull
+    private String getFilenameNoExtension() {
+        EditText fn = findViewById(R.id.filenameField);
+        return fn.getText().toString();
+    }
+
+    @NonNull
     private String getPassword() {
         EditText pd = findViewById(R.id.passwordField);
         return pd.getText().toString();
@@ -366,7 +335,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        return new DecryptionObject(data, correctPassword);
+        return new DecryptionObject(data, correctPassword, filename);
     }
 
     private void setupOpenFile() {
