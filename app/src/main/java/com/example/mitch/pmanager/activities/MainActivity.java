@@ -22,7 +22,9 @@ import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.background.AES;
 import com.example.mitch.pmanager.background.LibraryFile;
 import com.example.mitch.pmanager.objects.DecryptionObject;
+import com.example.mitch.pmanager.exceptions.DirectoryException;
 import com.example.mitch.pmanager.objects.PasswordEntry;
+import com.example.mitch.pmanager.objects.Perm;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -44,55 +46,65 @@ public class MainActivity extends AppCompatActivity {
     public static final int REQUEST_READ_STORAGE = 1;
     public static final int EXIT = 2;
 
+    private boolean readPerm = false;
+    private boolean writePerm = false;
+
     String downloadsFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath();
     String outPath = downloadsFolder + "/PManagerOut/";
     String inPath = downloadsFolder + "/PManagerIn/";
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String[] permissions, @NonNull int[] grantResults) {
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         switch (requestCode) {
             case REQUEST_WRITE_STORAGE: {
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    System.out.println("thanks");
+                    writePerm = true;
                 } else {
                     toast("Please allow", this);
-                    checkPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                    writePerm = false;
                 }
                 return;
             }
             case REQUEST_READ_STORAGE: {
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    System.out.println("thanks");
+                    readPerm = true;
                 } else {
                     toast("Please allow", this);
-                    checkPermission(Manifest.permission.READ_EXTERNAL_STORAGE);
+                    readPerm = false;
                 }
             }
         }
     }
 
-    public void checkPermission(String permission) {
-        switch (permission) {
-            case (Manifest.permission.READ_EXTERNAL_STORAGE): {
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                        != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(this,
-                            new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_READ_STORAGE);
+    public void checkPermission(Perm permission) {
+        if (ContextCompat.checkSelfPermission(this, permission.permission)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{permission.permission}, permission.code);
+        } else {
+            switch (permission.permission) {
+                case (Manifest.permission.READ_EXTERNAL_STORAGE): {
+                    readPerm = true;
+                    break;
                 }
-                break;
-            }
-            case (Manifest.permission.WRITE_EXTERNAL_STORAGE): {
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                        != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(this,
-                            new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_WRITE_STORAGE);
+                case (Manifest.permission.WRITE_EXTERNAL_STORAGE): {
+                    writePerm = true;
+                    break;
                 }
-                break;
             }
         }
+    }
+
+    private void checkPerms() {
+        Perm permA = new Perm(Manifest.permission.READ_EXTERNAL_STORAGE, REQUEST_READ_STORAGE);
+        Perm permB = new Perm(Manifest.permission.WRITE_EXTERNAL_STORAGE, REQUEST_WRITE_STORAGE);
+        checkPermission(permA);
+        checkPermission(permB);
     }
 
     @Override
@@ -100,8 +112,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         setContentView(R.layout.activity_login);
-        checkPermission(Manifest.permission.READ_EXTERNAL_STORAGE);
-        checkPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        checkPerms();
     }
 
     @Override
@@ -117,12 +128,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void deleteFile(View view) {
+        checkPerms();
         String[] strs = setupOpenFile();
         final String filename = strs[0];
-        DecryptionObject decryptionObject;
         final Context self = this;
         try {
-            decryptionObject = decryptFile(out, getPassword(), filename);
+            DecryptionObject decryptionObject = decryptFile(out, getPassword(), filename);
             if (decryptionObject.correctPassword) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle("Are you sure?");
@@ -134,7 +145,6 @@ public class MainActivity extends AppCompatActivity {
                     public void onClick(DialogInterface dialogInterface, int i) {
                         EditText pd = dialogLayout.findViewById(R.id.dialogPassword);
                         String pwd = pd.getText().toString();
-
                         try {
                             DecryptionObject decryptionObject = decryptFile(out, pwd, filename);
                             if (decryptionObject.correctPassword) {
@@ -167,112 +177,149 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void createDirs(View view) {
-        File inDir = new File(inPath);
-        File outDir = new File(outPath);
-        try {
-            if (outDir.mkdirs()) {
-                System.out.println("Directory created");
-            } else {
-                System.out.println("Directory is not created");
+        checkPerms();
+        if (readPerm && writePerm) {
+            File inDir = new File(inPath);
+            File outDir = new File(outPath);
+            try {
+                if (outDir.mkdirs()) {
+                    System.out.println("Directory created");
+                } else {
+                    throw new DirectoryException("Warning: Folders not Created!");
+                }
+                if (inDir.mkdirs()) {
+                    System.out.println("Directory created");
+                } else {
+                    throw new DirectoryException("Warning: In Folder not Created!");
+                }
+                toast("Folders Created", this);
+            } catch (DirectoryException e) {
+                e.printStackTrace();
+                toast(e.getMessage(), this);
             }
-            if (inDir.mkdirs()) {
-                System.out.println("Directory created");
-            } else {
-                System.out.println("Directory is not created");
+        }
+    }
+
+    public void deleteDirs(View view) {
+        checkPerms();
+        if (readPerm && writePerm) {
+            File inDir = new File(inPath);
+            File outDir = new File(outPath);
+            try {
+                if (outDir.delete()) {
+                    System.out.println("Directory deleted");
+                } else {
+                    throw new DirectoryException("Warning: Folders not Deleted!");
+                }
+                if (inDir.delete()) {
+                    System.out.println("Directory deleted");
+                } else {
+                    throw new DirectoryException("Warning: In Folder not Deleted!");
+                }
+                toast("Folders Deleted", this);
+            } catch (DirectoryException e) {
+                e.printStackTrace();
+                toast(e.getMessage(), this);
             }
-            toast("Folders Created", this);
-        } catch (Exception e) {
-            e.printStackTrace();
-            toast("Warning: Folders not Created!", this);
         }
     }
 
     public void importFile(View view) {
-        String file = getFilename();
-        File input = new File(getRoot(), file);
-        String sourcePath = inPath + file;
-        String destinationPath = input.getAbsolutePath();
+        checkPerms();
+        if (readPerm && writePerm) {
+            String file = getFilename();
+            File input = new File(getRoot(), file);
+            String sourcePath = inPath + file;
+            String destinationPath = input.getAbsolutePath();
 
-        File source = new File(sourcePath);
-        File destination = new File(destinationPath);
+            File source = new File(sourcePath);
+            File destination = new File(destinationPath);
 
-        try (InputStream in = new FileInputStream(source)) {
-            try (OutputStream out = new FileOutputStream(destination)) {
-                // Transfer bytes from in to out
-                byte[] buf = new byte[1024];
-                int len;
-                while ((len = in.read(buf)) > 0) {
-                    out.write(buf, 0, len);
+            try (InputStream in = new FileInputStream(source)) {
+                try (OutputStream out = new FileOutputStream(destination)) {
+                    // Transfer bytes from in to out
+                    byte[] buf = new byte[1024];
+                    int len;
+                    while ((len = in.read(buf)) > 0) {
+                        out.write(buf, 0, len);
+                    }
+                    toast("File imported", this);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    toast("Warning: File not imported!", this);
                 }
-                toast("File imported", this);
             } catch (IOException e) {
                 e.printStackTrace();
                 toast("Warning: File not imported!", this);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-            toast("Warning: File not imported!", this);
         }
     }
 
     public void exportFile(View view) {
-        String file = getFilename();
-        File input = new File(getRoot(), file);
-        String sourcePath = input.getAbsolutePath();
-        String destinationPath = outPath + file;
+        checkPerms();
+        if (readPerm && writePerm) {
+            String file = getFilename();
+            File input = new File(getRoot(), file);
+            String sourcePath = input.getAbsolutePath();
+            String destinationPath = outPath + file;
 
-        File source = new File(sourcePath);
-        File destination = new File(destinationPath);
+            File source = new File(sourcePath);
+            File destination = new File(destinationPath);
 
-        try (InputStream in = new FileInputStream(source)) {
-            try (OutputStream out = new FileOutputStream(destination)) {
-                // Transfer bytes from in to out
-                byte[] buf = new byte[1024];
-                int len;
-                while ((len = in.read(buf)) > 0) {
-                    out.write(buf, 0, len);
+            try (InputStream in = new FileInputStream(source)) {
+                try (OutputStream out = new FileOutputStream(destination)) {
+                    // Transfer bytes from in to out
+                    byte[] buf = new byte[1024];
+                    int len;
+                    while ((len = in.read(buf)) > 0) {
+                        out.write(buf, 0, len);
+                    }
+                    toast("File Exported", this);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    toast("Warning: File not Exported!", this);
                 }
-                toast("File Exported", this);
             } catch (IOException e) {
                 e.printStackTrace();
                 toast("Warning: File not Exported!", this);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-            toast("Warning: File not Exported!", this);
         }
     }
 
     public void openFile(View view) {
-        Intent intent = new Intent(this, MainScreenActivity.class);
-        String[] strs = setupOpenFile();
-        String filename = strs[0];
-        String password = strs[1];
-        resetFields();
-        boolean exists = out.exists();
-        try {
-            DecryptionObject decryptionObject;
-            if (exists) {
-                decryptionObject = decryptFile(out, password, filename);
-                if (decryptionObject.correctPassword) {
-                    LibraryFile f = new LibraryFile(out);
-                    fileData = f.read(password);
-                    setupIntent(intent, "Opened!", filename, password);
-                    startActivity(intent);
+        checkPerms();
+        if (readPerm && writePerm) {
+            Intent intent = new Intent(this, MainScreenActivity.class);
+            String[] strs = setupOpenFile();
+            String filename = strs[0];
+            String password = strs[1];
+            resetFields();
+            boolean exists = out.exists();
+            try {
+                DecryptionObject decryptionObject;
+                String message;
+                if (exists) {
+                    decryptionObject = decryptFile(out, password, filename);
+                    message = "Opened!";
+                } else {
+                    AES newFile = new AES(AES.pad(password));
+                    newFile.encryptString(filename, out);
+                    decryptionObject = decryptFile(out, password, filename);
+                    message = "New File Created!";
                 }
-            } else {
-                AES newFile = new AES(AES.pad(password));
-                newFile.encryptString(filename, out);
-                decryptionObject = decryptFile(out, password, filename);
-                if (decryptionObject.correctPassword) {
-                    LibraryFile f = new LibraryFile(out);
-                    fileData = f.read(password);
-                    setupIntent(intent, "New File Created!", filename, password);
-                    startActivity(intent);
-                }
+                doActivity(intent, filename, password, decryptionObject, message);
+            } catch (Exception e1) {
+                toast("Wrong Password!", this);
             }
-        } catch (Exception e1) {
-            toast("Wrong Password!", this);
+        }
+    }
+
+    private void doActivity(Intent intent, String filename, String password, DecryptionObject decryptionObject, String message) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
+        if (decryptionObject.correctPassword) {
+            LibraryFile f = new LibraryFile(out);
+            fileData = f.read(password);
+            setupIntent(intent, message, filename, password);
+            startActivity(intent);
         }
     }
 
@@ -310,11 +357,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private DecryptionObject decryptFile(File file, String pwd, String name) {
-        String[] splitFile;
         boolean correctPassword = false;
         String data = "";
-
         try {
+            String[] splitFile;
             AES decrypt = new AES(AES.pad(pwd));
             data = decrypt.decrypt(file);
             splitFile = data.split(System.lineSeparator());
