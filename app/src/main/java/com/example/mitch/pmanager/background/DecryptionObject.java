@@ -9,15 +9,8 @@ import java.util.ArrayList;
 
 import javax.crypto.NoSuchPaddingException;
 
-public class LibraryFile {
-
-    private File out;
-
-    public LibraryFile(File filename) {
-        this.out = filename;
-    }
-
-    public ArrayList<PasswordEntry> read(String key) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
+public class DecryptionObject {
+    public ArrayList<PasswordEntry> read(String key, File out) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
         ArrayList<PasswordEntry> entries = new ArrayList<>();
         AES aes = new AES(AES.pad(key));
         String decrypted = aes.decrypt(out);

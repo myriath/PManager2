@@ -1,6 +1,7 @@
 package com.example.mitch.pmanager.activities;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -20,9 +21,9 @@ import android.widget.Toast;
 
 import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.background.AES;
-import com.example.mitch.pmanager.background.LibraryFile;
+import com.example.mitch.pmanager.exceptions.DecryptionException;
 import com.example.mitch.pmanager.exceptions.DirectoryException;
-import com.example.mitch.pmanager.objects.DecryptionObject;
+import com.example.mitch.pmanager.background.DecryptionObject;
 import com.example.mitch.pmanager.objects.PasswordEntry;
 import com.example.mitch.pmanager.objects.Perm;
 
@@ -115,44 +116,41 @@ public class MainActivity extends AppCompatActivity {
         final String filename = strs[0];
         final Context self = this;
         try {
-            DecryptionObject decryptionObject = decryptFile(out, getPassword(), filename);
-            if (decryptionObject.correctPassword) {
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setTitle("Are you sure?");
-                builder.setMessage("Re-Enter Password");
-                final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_delete_file, null);
-                builder.setView(dialogLayout);
-                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        EditText pd = dialogLayout.findViewById(R.id.dialogPassword);
-                        String pwd = pd.getText().toString();
-                        try {
-                            DecryptionObject decryptionObject = decryptFile(out, pwd, filename);
-                            if (decryptionObject.correctPassword) {
-                                if (out.delete()) {
-                                    toast("File Deleted", self);
-                                } else {
-                                    toast("Warning: File not Deleted!", self);
-                                }
-                            }
-                        } catch (Exception e1) {
-                            toast("Wrong Password!", self);
+            decryptFile(out, getPassword(), filename);
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Are you sure?");
+            builder.setMessage("Re-Enter Password");
+            @SuppressLint("InflateParams")
+            final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_delete_file, null);
+            builder.setView(dialogLayout);
+            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    EditText pd = dialogLayout.findViewById(R.id.dialogPassword);
+                    String pwd = pd.getText().toString();
+                    try {
+                        decryptFile(out, pwd, filename);
+                        if (out.delete()) {
+                            toast("File Deleted", self);
+                        } else {
+                            toast("Warning: File not Deleted!", self);
                         }
+                    } catch (Exception e1) {
+                        toast("Wrong Password!", self);
                     }
-                });
+                }
+            });
 
-                builder.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        toast("Cancelled", self);
-                    }
-                });
+            builder.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    toast("Cancelled", self);
+                }
+            });
 
-                AlertDialog dialog = builder.create();
-                dialog.show();
-                resetFields();
-            }
+            AlertDialog dialog = builder.create();
+            dialog.show();
+            resetFields();
         } catch (Exception e1) {
             toast("Wrong Password!", this);
         }
@@ -267,12 +265,14 @@ public class MainActivity extends AppCompatActivity {
             DecryptionObject decryptionObject;
             String message;
             if (exists) {
-                decryptionObject = decryptFile(out, password, filename);
+                decryptionObject = new DecryptionObject();
+                decryptFile(out, password, filename);
                 message = "Opened!";
             } else {
                 AES newFile = new AES(AES.pad(password));
                 newFile.encryptString(filename, out);
-                decryptionObject = decryptFile(out, password, filename);
+                decryptionObject = new DecryptionObject();
+                decryptFile(out, password, filename);
                 message = "New File Created!";
             }
             doActivity(intent, filename, password, decryptionObject, message);
@@ -281,13 +281,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void doActivity(Intent intent, String filename, String password, DecryptionObject decryptionObject, String message) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
-        if (decryptionObject.correctPassword) {
-            LibraryFile f = new LibraryFile(out);
-            fileData = f.read(password);
-            setupIntent(intent, message, filename, password);
-            startActivity(intent);
-        }
+    private void doActivity(Intent intent, String filename, String password, DecryptionObject decryptionObject, String message)
+            throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
+        fileData = decryptionObject.read(password, out);
+        setupIntent(intent, message, filename, password);
+        startActivity(intent);
     }
 
     private void setupIntent(Intent intent, @Nullable String message, String filename, String password) {
@@ -323,25 +321,20 @@ public class MainActivity extends AppCompatActivity {
         return root;
     }
 
-    private DecryptionObject decryptFile(File file, String pwd, String name) {
-        boolean correctPassword = false;
-        String data = "";
+    private void decryptFile(File file, String pwd, String name) throws DecryptionException {
+        String data;
         try {
             String[] splitFile;
             AES decrypt = new AES(AES.pad(pwd));
             data = decrypt.decrypt(file);
             splitFile = data.split(System.lineSeparator());
 
-            if (splitFile[0].equals(name)) {
-                correctPassword = true;
-            } else {
-                toast("Wrong Password!", this);
+            if (!splitFile[0].equals(name)) {
+                throw new DecryptionException("");
             }
         } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
-            toast("Wrong Password!", this);
+            throw new DecryptionException("");
         }
-
-        return new DecryptionObject(data, correctPassword, name);
     }
 
     private String[] setupOpenFile() {

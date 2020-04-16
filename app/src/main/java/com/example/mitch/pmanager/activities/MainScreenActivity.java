@@ -1,5 +1,6 @@
 package com.example.mitch.pmanager.activities;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -26,6 +27,7 @@ import java.io.File;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Locale;
 
 import javax.crypto.NoSuchPaddingException;
 
@@ -89,6 +91,7 @@ public class MainScreenActivity extends AppCompatActivity {
     public void addButton(View view) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Add Entry");
+        @SuppressLint("InflateParams")
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_add, null);
         final Context self = this;
         builder.setView(dialogLayout);
@@ -127,6 +130,7 @@ public class MainScreenActivity extends AppCompatActivity {
     public void deleteButton(View view) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Delete Entry");
+        @SuppressLint("InflateParams")
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_delete_entry, null);
         final Context self = this;
         builder.setView(dialogLayout);
@@ -168,6 +172,7 @@ public class MainScreenActivity extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Filter");
         builder.setMessage("Filter by domain, username, and password");
+        @SuppressLint("InflateParams")
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_filter, null);
         final Context self = this;
         builder.setView(dialogLayout);
@@ -221,6 +226,7 @@ public class MainScreenActivity extends AppCompatActivity {
     public void copyButton(View view) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Copy");
+        @SuppressLint("InflateParams")
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_copy, null);
         final Context self = this;
         builder.setView(dialogLayout);
@@ -322,7 +328,7 @@ public class MainScreenActivity extends AppCompatActivity {
         TextView pw = new TextView(this);
         pw.setBackgroundColor(Color.GRAY);
         pw.setPadding(5, 5, 5, 5);
-        id.setText(Integer.toString(entry.index));
+        id.setText(String.format(Locale.getDefault(), "%d", entry.index));
         dm.setText(entry.domain);
         un.setText(entry.username);
         pw.setText(entry.password);
