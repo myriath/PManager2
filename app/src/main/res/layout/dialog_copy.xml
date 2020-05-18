@@ -24,5 +24,23 @@
             android:ems="10"
             android:hint="Index"
             android:inputType="number" />
+
+        <RadioGroup
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" >
+
+            <RadioButton
+                android:id="@+id/username"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="Copy Username" />
+
+            <RadioButton
+                android:id="@+id/password"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Copy Password" />
+        </RadioGroup>
     </LinearLayout>
 </android.support.constraint.ConstraintLayout>

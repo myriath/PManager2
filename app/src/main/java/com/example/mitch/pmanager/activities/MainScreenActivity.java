@@ -230,51 +230,51 @@ public class MainScreenActivity extends AppCompatActivity {
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_copy, null);
         final Context self = this;
         builder.setView(dialogLayout);
-        builder.setPositiveButton("Copy Username", new DialogInterface.OnClickListener() {
+        builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
                 EditText ct = dialogLayout.findViewById(R.id.dialog_copy_index);
-                int copy = Integer.parseInt(ct.getText().toString());
-                ClipboardManager clipboard = (ClipboardManager)
-                        getSystemService(Context.CLIPBOARD_SERVICE);
-                for (PasswordEntry entry : fileData) {
-                    if (entry.index == copy) {
-                        ClipData clip = ClipData.newPlainText("username", entry.username);
-                        assert clipboard != null;
-                        clipboard.setPrimaryClip(clip);
-                        MainActivity.toast("Copied Username #" + copy, self);
-                    }
+
+                RadioButton copyUsername = dialogLayout.findViewById(R.id.username);
+                RadioButton copyPassword = dialogLayout.findViewById(R.id.password);
+
+                if (copyUsername.isChecked()) {
+                    copy(ct, self, 0, "Copied Username #");
+                } else if (copyPassword.isChecked()) {
+                    copy(ct, self, 1, "Copied Password #");
                 }
             }
         });
 
-        builder.setNeutralButton("Cancel", new DialogInterface.OnClickListener() {
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
                 MainActivity.toast("Cancelled", self);
             }
         });
 
-        builder.setNegativeButton("Copy Password", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                EditText ct = dialogLayout.findViewById(R.id.dialog_copy_index);
-                int copy = Integer.parseInt(ct.getText().toString());
-                ClipboardManager clipboard = (ClipboardManager)
-                        getSystemService(Context.CLIPBOARD_SERVICE);
-                for (PasswordEntry entry : fileData) {
-                    if (entry.index == copy) {
-                        ClipData clip = ClipData.newPlainText("password", entry.password);
-                        assert clipboard != null;
-                        clipboard.setPrimaryClip(clip);
-                        MainActivity.toast("Copied Password #" + copy, self);
-                    }
-                }
-            }
-        });
-
         AlertDialog dialog = builder.create();
         dialog.show();
+    }
+
+    private void copy(EditText index, Context self, int function, String message) {
+        int copy = Integer.parseInt(index.getText().toString());
+        ClipboardManager clipboard = (ClipboardManager)
+                getSystemService(Context.CLIPBOARD_SERVICE);
+        for (PasswordEntry entry : fileData) {
+            if (entry.index == copy) {
+                ClipData clip;
+                if (function == 0) {
+                    clip = ClipData.newPlainText("username", entry.username);
+                    MainActivity.toast("Copied Username #" + copy, self);
+                } else {
+                    clip = ClipData.newPlainText("password", entry.password);
+                    MainActivity.toast("Copied Password #" + copy, self);
+                }
+                assert clipboard != null;
+                clipboard.setPrimaryClip(clip);
+            }
+        }
     }
 
     public void resetFilterButton(View view) {

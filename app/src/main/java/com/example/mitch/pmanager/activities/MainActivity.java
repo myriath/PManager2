@@ -207,19 +207,16 @@ public class MainActivity extends AppCompatActivity {
         File source = new File(sourcePath);
         File destination = new File(destinationPath);
 
-        try (InputStream in = new FileInputStream(source)) {
-            try (OutputStream out = new FileOutputStream(destination)) {
-                // Transfer bytes from in to out
-                byte[] buf = new byte[1024];
-                int len;
-                while ((len = in.read(buf)) > 0) {
-                    out.write(buf, 0, len);
-                }
-                toast("File imported", this);
-            } catch (IOException e) {
-                e.printStackTrace();
-                toast("Warning: File not imported!", this);
+        try {
+            InputStream in = new FileInputStream(source);
+            OutputStream out = new FileOutputStream(destination);
+            // Transfer bytes from in to out
+            byte[] buf = new byte[1024];
+            int len;
+            while ((len = in.read(buf)) > 0) {
+                out.write(buf, 0, len);
             }
+            toast("File imported", this);
         } catch (IOException e) {
             e.printStackTrace();
             toast("Warning: File not imported!", this);
@@ -235,19 +232,16 @@ public class MainActivity extends AppCompatActivity {
         File source = new File(sourcePath);
         File destination = new File(destinationPath);
 
-        try (InputStream in = new FileInputStream(source)) {
-            try (OutputStream out = new FileOutputStream(destination)) {
-                // Transfer bytes from in to out
-                byte[] buf = new byte[1024];
-                int len;
-                while ((len = in.read(buf)) > 0) {
-                    out.write(buf, 0, len);
-                }
-                toast("File Exported", this);
-            } catch (IOException e) {
-                e.printStackTrace();
-                toast("Warning: File not Exported!", this);
+        try {
+            InputStream in = new FileInputStream(source);
+            OutputStream out = new FileOutputStream(destination);
+            // Transfer bytes from in to out
+            byte[] buf = new byte[1024];
+            int len;
+            while ((len = in.read(buf)) > 0) {
+                out.write(buf, 0, len);
             }
+            toast("File Exported", this);
         } catch (IOException e) {
             e.printStackTrace();
             toast("Warning: File not Exported!", this);
@@ -260,11 +254,10 @@ public class MainActivity extends AppCompatActivity {
         String filename = strs[0];
         String password = strs[1];
         resetFields();
-        boolean exists = out.exists();
         try {
             DecryptionObject decryptionObject;
             String message;
-            if (exists) {
+            if (out.exists()) {
                 decryptionObject = new DecryptionObject();
                 decryptFile(out, password, filename);
                 message = "Opened!";
@@ -355,3 +348,4 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(context, text, Toast.LENGTH_LONG).show();
     }
 }
+
