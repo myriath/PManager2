@@ -113,6 +113,7 @@ public class MainScreenActivity extends AppCompatActivity {
                 }
 
                 MainActivity.toast("Added", self);
+                save();
             }
         });
 
@@ -154,6 +155,7 @@ public class MainScreenActivity extends AppCompatActivity {
                 fileData = temp;
 
                 MainActivity.toast("Deleted", self);
+                save();
             }
         });
 
@@ -239,9 +241,9 @@ public class MainScreenActivity extends AppCompatActivity {
                 RadioButton copyPassword = dialogLayout.findViewById(R.id.password);
 
                 if (copyUsername.isChecked()) {
-                    copy(ct, self, 0, "Copied Username #");
+                    copy(ct, self, 0);
                 } else if (copyPassword.isChecked()) {
-                    copy(ct, self, 1, "Copied Password #");
+                    copy(ct, self, 1);
                 }
             }
         });
@@ -257,7 +259,7 @@ public class MainScreenActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    private void copy(EditText index, Context self, int function, String message) {
+    private void copy(EditText index, Context self, int function) {
         int copy = Integer.parseInt(index.getText().toString());
         ClipboardManager clipboard = (ClipboardManager)
                 getSystemService(Context.CLIPBOARD_SERVICE);
@@ -271,8 +273,11 @@ public class MainScreenActivity extends AppCompatActivity {
                     clip = ClipData.newPlainText("password", entry.password);
                     MainActivity.toast("Copied Password #" + copy, self);
                 }
-                assert clipboard != null;
-                clipboard.setPrimaryClip(clip);
+
+                if (clipboard != null) {
+                    clipboard.setPrimaryClip(clip);
+                }
+                return;
             }
         }
     }
@@ -287,7 +292,7 @@ public class MainScreenActivity extends AppCompatActivity {
                 Toast.LENGTH_LONG).show();
     }
 
-    public void saveButton(View view) {
+    public void save() {
         ArrayList<String> dat = new ArrayList<>();
         dat.add(filename);
         for (PasswordEntry entry : fileData) {
@@ -304,7 +309,7 @@ public class MainScreenActivity extends AppCompatActivity {
             AES f = new AES(AES.pad(password));
             f.encryptString(sb.toString(), file);
             if (!f.decrypt(file).split(System.lineSeparator())[0].equals(filename)) {
-                saveButton(view);
+                save();
             }
             Toast.makeText(this, "Saved",
                     Toast.LENGTH_LONG).show();

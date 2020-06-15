@@ -15,6 +15,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.view.Window;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -23,7 +24,6 @@ import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.background.AES;
 import com.example.mitch.pmanager.exceptions.DecryptionException;
 import com.example.mitch.pmanager.exceptions.DirectoryException;
-import com.example.mitch.pmanager.background.DecryptionObject;
 import com.example.mitch.pmanager.objects.PasswordEntry;
 import com.example.mitch.pmanager.objects.Perm;
 
@@ -95,6 +95,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_login);
         checkPerms();
     }
@@ -126,7 +127,7 @@ public class MainActivity extends AppCompatActivity {
             builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialogInterface, int i) {
-                    EditText pd = dialogLayout.findViewById(R.id.dialogPassword);
+                    EditText pd = dialogLayout.findViewById(R.id.dialog_new_password);
                     String pwd = pd.getText().toString();
                     try {
                         decryptFile(out, pwd, filename);
@@ -153,6 +154,73 @@ public class MainActivity extends AppCompatActivity {
             resetFields();
         } catch (Exception e1) {
             toast("Wrong Password!", this);
+        }
+    }
+
+    public void changePassword(View view) {
+        String[] strs = setupOpenFile();
+        final String filename = strs[0];
+        final Context self = this;
+        try {
+            decryptFile(out, getPassword(), filename);
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Change Password");
+            @SuppressLint("InflateParams")
+            final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_change_password, null);
+            builder.setView(dialogLayout);
+            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    EditText pd = dialogLayout.findViewById(R.id.dialog_new_password);
+                    String pwd = pd.getText().toString();
+                    try {
+                        updatePassword(filename, pwd, out);
+                    } catch (Exception e1) {
+                        toast("Wrong Password!", self);
+                    }
+                }
+            });
+
+            builder.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    toast("Cancelled", self);
+                }
+            });
+
+            AlertDialog dialog = builder.create();
+            dialog.show();
+            resetFields();
+        } catch (Exception e1) {
+            toast("Wrong Password!", this);
+        }
+    }
+
+    public void updatePassword(String filename, String newPassword, File file) {
+        ArrayList<String> dat = new ArrayList<>();
+        dat.add(filename);
+        for (PasswordEntry entry : fileData) {
+            dat.add(entry.domain);
+            dat.add(entry.username);
+            dat.add(entry.password);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String str : dat) {
+            sb.append(str);
+            sb.append('\0');
+        }
+        try {
+            AES f = new AES(AES.pad(newPassword));
+            f.encryptString(sb.toString(), file);
+            if (!f.decrypt(file).split(System.lineSeparator())[0].equals(filename)) {
+                updatePassword(filename, newPassword, file);
+            }
+            Toast.makeText(this, "Saved",
+                    Toast.LENGTH_LONG).show();
+        } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException e1) {
+            Toast.makeText(this, "Warning: File not Saved!",
+                    Toast.LENGTH_LONG).show();
+            e1.printStackTrace();
         }
     }
 
@@ -255,28 +323,25 @@ public class MainActivity extends AppCompatActivity {
         String password = strs[1];
         resetFields();
         try {
-            DecryptionObject decryptionObject;
             String message;
             if (out.exists()) {
-                decryptionObject = new DecryptionObject();
                 decryptFile(out, password, filename);
                 message = "Opened!";
             } else {
                 AES newFile = new AES(AES.pad(password));
                 newFile.encryptString(filename, out);
-                decryptionObject = new DecryptionObject();
                 decryptFile(out, password, filename);
                 message = "New File Created!";
             }
-            doActivity(intent, filename, password, decryptionObject, message);
+            doActivity(intent, filename, password, message);
         } catch (Exception e1) {
             toast("Wrong Password!", this);
         }
     }
 
-    private void doActivity(Intent intent, String filename, String password, DecryptionObject decryptionObject, String message)
+    private void doActivity(Intent intent, String filename, String password, String message)
             throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
-        fileData = decryptionObject.read(password, out);
+        fileData = read(password, out);
         setupIntent(intent, message, filename, password);
         startActivity(intent);
     }
@@ -346,6 +411,23 @@ public class MainActivity extends AppCompatActivity {
 
     public static void toast(String text, Context context) {
         Toast.makeText(context, text, Toast.LENGTH_LONG).show();
+    }
+
+    public static ArrayList<PasswordEntry> read(String key, File out) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
+        ArrayList<PasswordEntry> entries = new ArrayList<>();
+        AES aes = new AES(AES.pad(key));
+        String decrypted = aes.decrypt(out);
+        String[] dataList = decrypted.split(System.lineSeparator());
+        String[] entry = new String[3];
+        int i2 = 0;
+        int check0 = i2 * 3 + 1;
+        int check1 = (dataList.length-1) / 3;
+        while(i2 < check1) {
+            System.arraycopy(dataList, check0, entry, 0, 3);
+            i2++;
+            entries.add(new PasswordEntry(entry[0], entry[1], entry[2], i2));
+        }
+        return entries;
     }
 }
 
