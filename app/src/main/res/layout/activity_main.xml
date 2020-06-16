@@ -91,24 +91,32 @@
                                 android:id="@+id/indexLabel"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:clickable="true"
+                                android:onClick="sortIndex"
                                 android:text="Index" />
 
                             <TextView
                                 android:id="@+id/domainLabel"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:clickable="true"
+                                android:onClick="sortDomain"
                                 android:text="Domain" />
 
                             <TextView
                                 android:id="@+id/usernameLabel"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:clickable="true"
+                                android:onClick="sortUsername"
                                 android:text="Username" />
 
                             <TextView
                                 android:id="@+id/passwordLabel"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:clickable="true"
+                                android:onClick="sortPassword"
                                 android:text="Password" />
                         </TableRow>
 

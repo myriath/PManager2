@@ -420,9 +420,9 @@ public class MainActivity extends AppCompatActivity {
         String[] dataList = decrypted.split(System.lineSeparator());
         String[] entry = new String[3];
         int i2 = 0;
-        int check0 = i2 * 3 + 1;
         int check1 = (dataList.length-1) / 3;
         while(i2 < check1) {
+            int check0 = i2 * 3 + 1;
             System.arraycopy(dataList, check0, entry, 0, 3);
             i2++;
             entries.add(new PasswordEntry(entry[0], entry[1], entry[2], i2));

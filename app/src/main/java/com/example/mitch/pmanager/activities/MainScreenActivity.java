@@ -27,6 +27,7 @@ import java.io.File;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Locale;
 
 import javax.crypto.NoSuchPaddingException;
@@ -41,6 +42,11 @@ public class MainScreenActivity extends AppCompatActivity {
     private static final String STATE_FILENAME = "filename";
     private static final String STATE_PASSWORD = "password";
     private static final String STATE_FILE = "file";
+
+    private boolean ascendingIndex = true;
+    private boolean ascendingDomain = true;
+    private boolean ascendingUsername = true;
+    private boolean ascendingPassword = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +94,117 @@ public class MainScreenActivity extends AppCompatActivity {
         outState.putSerializable(STATE_FILEDATA, fileData);
     }
 
+    private void resetFlags() {
+        ascendingIndex = true;
+        ascendingDomain = true;
+        ascendingUsername = true;
+        ascendingPassword = true;
+    }
+
+    public void sortIndex() {
+        fileData.sort(new Comparator<PasswordEntry>() {
+            @Override
+            public int compare(PasswordEntry entry0, PasswordEntry entry1) {
+                if (ascendingIndex) {
+                    return Integer.compare(entry0.index, entry1.index);
+                } else {
+                    return -Integer.compare(entry0.index, entry1.index);
+                }
+            }
+        });
+
+        if (ascendingIndex) {
+            resetFlags();
+            ascendingIndex = false;
+        } else {
+            resetFlags();
+        }
+
+        TableLayout tl = findViewById(R.id.tableLayout);
+        clearTable();
+        for (PasswordEntry entry : fileData) {
+            createTable(tl, entry);
+        }
+    }
+
+    public void sortDomain() {
+        fileData.sort(new Comparator<PasswordEntry>() {
+            @Override
+            public int compare(PasswordEntry entry0, PasswordEntry entry1) {
+                if (ascendingDomain) {
+                    return entry0.domain.toLowerCase().compareTo(entry1.domain.toLowerCase());
+                } else {
+                    return -entry0.domain.toLowerCase().compareTo(entry1.domain.toLowerCase());
+                }
+            }
+        });
+
+        if (ascendingDomain) {
+            resetFlags();
+            ascendingDomain = false;
+        } else {
+            resetFlags();
+        }
+
+        TableLayout tl = findViewById(R.id.tableLayout);
+        clearTable();
+        for (PasswordEntry entry : fileData) {
+            createTable(tl, entry);
+        }
+    }
+
+    public void sortUsername() {
+        fileData.sort(new Comparator<PasswordEntry>() {
+            @Override
+            public int compare(PasswordEntry entry0, PasswordEntry entry1) {
+                if (ascendingUsername) {
+                    return entry0.username.toLowerCase().compareTo(entry1.username.toLowerCase());
+                } else {
+                    return -entry0.username.toLowerCase().compareTo(entry1.username.toLowerCase());
+                }
+            }
+        });
+
+        if (ascendingUsername) {
+            resetFlags();
+            ascendingUsername = false;
+        } else {
+            resetFlags();
+        }
+
+        TableLayout tl = findViewById(R.id.tableLayout);
+        clearTable();
+        for (PasswordEntry entry : fileData) {
+            createTable(tl, entry);
+        }
+    }
+
+    public void sortPassword() {
+        fileData.sort(new Comparator<PasswordEntry>() {
+            @Override
+            public int compare(PasswordEntry entry0, PasswordEntry entry1) {
+                if (ascendingPassword) {
+                    return entry0.password.toLowerCase().compareTo(entry1.password.toLowerCase());
+                } else {
+                    return -entry0.password.toLowerCase().compareTo(entry1.password.toLowerCase());
+                }
+            }
+        });
+
+        if (ascendingPassword) {
+            resetFlags();
+            ascendingPassword = false;
+        } else {
+            resetFlags();
+        }
+
+        TableLayout tl = findViewById(R.id.tableLayout);
+        clearTable();
+        for (PasswordEntry entry : fileData) {
+            createTable(tl, entry);
+        }
+    }
+
     public void addButton(View view) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Add Entry");
@@ -113,6 +230,8 @@ public class MainScreenActivity extends AppCompatActivity {
                 }
 
                 MainActivity.toast("Added", self);
+                resetFlags();
+                sortIndex();
                 save();
             }
         });
@@ -155,6 +274,8 @@ public class MainScreenActivity extends AppCompatActivity {
                 fileData = temp;
 
                 MainActivity.toast("Deleted", self);
+                resetFlags();
+                sortIndex();
                 save();
             }
         });
@@ -351,15 +472,39 @@ public class MainScreenActivity extends AppCompatActivity {
         TextView id = new TextView(this);
         id.setPadding(5, 5, 5, 5);
         id.setBackgroundColor(Color.LTGRAY);
+        id.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                sortIndex();
+            }
+        });
         TextView dm = new TextView(this);
         dm.setBackgroundColor(Color.GRAY);
         dm.setPadding(5, 5, 5, 5);
+        dm.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                sortDomain();
+            }
+        });
         TextView un = new TextView(this);
         un.setBackgroundColor(Color.LTGRAY);
         un.setPadding(5, 5, 5, 5);
+        un.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                sortUsername();
+            }
+        });
         TextView pw = new TextView(this);
         pw.setBackgroundColor(Color.GRAY);
         pw.setPadding(5, 5, 5, 5);
+        pw.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                sortPassword();
+            }
+        });
         id.setText(R.string.table_index);
         dm.setText(R.string.table_domain);
         un.setText(R.string.table_username);
