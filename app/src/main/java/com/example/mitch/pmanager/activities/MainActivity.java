@@ -10,7 +10,6 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -56,24 +55,13 @@ public class MainActivity extends AppCompatActivity {
                                            @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        switch (requestCode) {
-            case REQUEST_WRITE_STORAGE: {
-                if (grantResults.length <= 0
-                        || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                            toast("Please allow", this);
-                            finish();
-                        }
-                return;
-            }
-            case REQUEST_READ_STORAGE: {
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Perm permB = new Perm(Manifest.permission.WRITE_EXTERNAL_STORAGE, REQUEST_WRITE_STORAGE);
-                    checkPermission(permB);
-                } else {
-                    toast("Please allow", this);
-                    finish();
-                }
+        if (grantResults.length <= 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+            toast("Please Allow", this);
+            finish();
+        } else {
+            if (requestCode == REQUEST_READ_STORAGE) {
+                Perm permB = new Perm(Manifest.permission.WRITE_EXTERNAL_STORAGE, REQUEST_WRITE_STORAGE);
+                checkPermission(permB);
             }
         }
     }
@@ -317,7 +305,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void openFile(View view) {
-        Intent intent = new Intent(this, MainScreenActivity.class);
         String[] strs = setupOpenFile();
         String filename = strs[0];
         String password = strs[1];
@@ -333,26 +320,18 @@ public class MainActivity extends AppCompatActivity {
                 decryptFile(out, password, filename);
                 message = "New File Created!";
             }
-            doActivity(intent, filename, password, message);
+            toast(message, this);
+            fileData = read(password, out);
+
+            Intent intent = new Intent(this, MainScreenActivity.class);
+            intent.putExtra("file", out);
+            intent.putExtra("filename", filename);
+            intent.putExtra("password", password);
+            intent.putExtra("filedata", fileData);
+
+            startActivity(intent);
         } catch (Exception e1) {
             toast("Wrong Password!", this);
-        }
-    }
-
-    private void doActivity(Intent intent, String filename, String password, String message)
-            throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
-        fileData = read(password, out);
-        setupIntent(intent, message, filename, password);
-        startActivity(intent);
-    }
-
-    private void setupIntent(Intent intent, @Nullable String message, String filename, String password) {
-        intent.putExtra("file", out);
-        intent.putExtra("filename", filename);
-        intent.putExtra("password", password);
-        intent.putExtra("filedata", fileData);
-        if (message != null) {
-            toast(message, this);
         }
     }
 

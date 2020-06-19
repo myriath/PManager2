@@ -42,11 +42,13 @@ public class MainScreenActivity extends AppCompatActivity {
     private static final String STATE_FILENAME = "filename";
     private static final String STATE_PASSWORD = "password";
     private static final String STATE_FILE = "file";
+    private static final int SORT_INDEX = 0;
+    private static final int SORT_DOMAIN = 1;
+    private static final int SORT_USERNAME = 2;
+    private static final int SORT_PASSWORD = 3;
 
-    private boolean ascendingIndex = true;
-    private boolean ascendingDomain = true;
-    private boolean ascendingUsername = true;
-    private boolean ascendingPassword = true;
+    private int previousSort = -1;
+    private boolean ascendingSort = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,115 +96,38 @@ public class MainScreenActivity extends AppCompatActivity {
         outState.putSerializable(STATE_FILEDATA, fileData);
     }
 
-    private void resetFlags() {
-        ascendingIndex = true;
-        ascendingDomain = true;
-        ascendingUsername = true;
-        ascendingPassword = true;
+    public void rebuildTable() {
+        TableLayout tl = findViewById(R.id.tableLayout);
+        clearTable();
+        for (PasswordEntry entry : fileData) {
+            createTable(tl, entry);
+        }
+    }
+
+    public void sort(Comparator<PasswordEntry> comparator, int sortFunction) {
+        if (previousSort == sortFunction) {
+            ascendingSort = !ascendingSort;
+        } else {
+            ascendingSort = true;
+        }
+
+        previousSort = sortFunction;
+        fileData.sort(comparator);
+
+        rebuildTable();
     }
 
     public void sortIndex() {
-        fileData.sort(new Comparator<PasswordEntry>() {
+        sort(new Comparator<PasswordEntry>() {
             @Override
             public int compare(PasswordEntry entry0, PasswordEntry entry1) {
-                if (ascendingIndex) {
+                if (ascendingSort) {
                     return Integer.compare(entry0.index, entry1.index);
                 } else {
                     return -Integer.compare(entry0.index, entry1.index);
                 }
             }
-        });
-
-        if (ascendingIndex) {
-            resetFlags();
-            ascendingIndex = false;
-        } else {
-            resetFlags();
-        }
-
-        TableLayout tl = findViewById(R.id.tableLayout);
-        clearTable();
-        for (PasswordEntry entry : fileData) {
-            createTable(tl, entry);
-        }
-    }
-
-    public void sortDomain() {
-        fileData.sort(new Comparator<PasswordEntry>() {
-            @Override
-            public int compare(PasswordEntry entry0, PasswordEntry entry1) {
-                if (ascendingDomain) {
-                    return entry0.domain.toLowerCase().compareTo(entry1.domain.toLowerCase());
-                } else {
-                    return -entry0.domain.toLowerCase().compareTo(entry1.domain.toLowerCase());
-                }
-            }
-        });
-
-        if (ascendingDomain) {
-            resetFlags();
-            ascendingDomain = false;
-        } else {
-            resetFlags();
-        }
-
-        TableLayout tl = findViewById(R.id.tableLayout);
-        clearTable();
-        for (PasswordEntry entry : fileData) {
-            createTable(tl, entry);
-        }
-    }
-
-    public void sortUsername() {
-        fileData.sort(new Comparator<PasswordEntry>() {
-            @Override
-            public int compare(PasswordEntry entry0, PasswordEntry entry1) {
-                if (ascendingUsername) {
-                    return entry0.username.toLowerCase().compareTo(entry1.username.toLowerCase());
-                } else {
-                    return -entry0.username.toLowerCase().compareTo(entry1.username.toLowerCase());
-                }
-            }
-        });
-
-        if (ascendingUsername) {
-            resetFlags();
-            ascendingUsername = false;
-        } else {
-            resetFlags();
-        }
-
-        TableLayout tl = findViewById(R.id.tableLayout);
-        clearTable();
-        for (PasswordEntry entry : fileData) {
-            createTable(tl, entry);
-        }
-    }
-
-    public void sortPassword() {
-        fileData.sort(new Comparator<PasswordEntry>() {
-            @Override
-            public int compare(PasswordEntry entry0, PasswordEntry entry1) {
-                if (ascendingPassword) {
-                    return entry0.password.toLowerCase().compareTo(entry1.password.toLowerCase());
-                } else {
-                    return -entry0.password.toLowerCase().compareTo(entry1.password.toLowerCase());
-                }
-            }
-        });
-
-        if (ascendingPassword) {
-            resetFlags();
-            ascendingPassword = false;
-        } else {
-            resetFlags();
-        }
-
-        TableLayout tl = findViewById(R.id.tableLayout);
-        clearTable();
-        for (PasswordEntry entry : fileData) {
-            createTable(tl, entry);
-        }
+        }, SORT_INDEX);
     }
 
     public void addButton(View view) {
@@ -230,7 +155,7 @@ public class MainScreenActivity extends AppCompatActivity {
                 }
 
                 MainActivity.toast("Added", self);
-                resetFlags();
+                ascendingSort = true;
                 sortIndex();
                 save();
             }
@@ -274,7 +199,7 @@ public class MainScreenActivity extends AppCompatActivity {
                 fileData = temp;
 
                 MainActivity.toast("Deleted", self);
-                resetFlags();
+                ascendingSort = true;
                 sortIndex();
                 save();
             }
@@ -484,7 +409,16 @@ public class MainScreenActivity extends AppCompatActivity {
         dm.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                sortDomain();
+                sort(new Comparator<PasswordEntry>() {
+                    @Override
+                    public int compare(PasswordEntry entry0, PasswordEntry entry1) {
+                        if (ascendingSort) {
+                            return entry0.domain.toLowerCase().compareTo(entry1.domain.toLowerCase());
+                        } else {
+                            return -entry0.domain.toLowerCase().compareTo(entry1.domain.toLowerCase());
+                        }
+                    }
+                }, SORT_DOMAIN);
             }
         });
         TextView un = new TextView(this);
@@ -493,7 +427,16 @@ public class MainScreenActivity extends AppCompatActivity {
         un.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                sortUsername();
+                sort(new Comparator<PasswordEntry>() {
+                    @Override
+                    public int compare(PasswordEntry entry0, PasswordEntry entry1) {
+                        if (ascendingSort) {
+                            return entry0.username.toLowerCase().compareTo(entry1.username.toLowerCase());
+                        } else {
+                            return -entry0.username.toLowerCase().compareTo(entry1.username.toLowerCase());
+                        }
+                    }
+                }, SORT_USERNAME);
             }
         });
         TextView pw = new TextView(this);
@@ -502,7 +445,16 @@ public class MainScreenActivity extends AppCompatActivity {
         pw.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                sortPassword();
+                sort(new Comparator<PasswordEntry>() {
+                    @Override
+                    public int compare(PasswordEntry entry0, PasswordEntry entry1) {
+                        if (ascendingSort) {
+                            return entry0.password.toLowerCase().compareTo(entry1.password.toLowerCase());
+                        } else {
+                            return -entry0.password.toLowerCase().compareTo(entry1.password.toLowerCase());
+                        }
+                    }
+                }, SORT_PASSWORD);
             }
         });
         id.setText(R.string.table_index);
