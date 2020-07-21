@@ -66,11 +66,10 @@ public class MainScreenActivity extends AppCompatActivity {
                 fileData = (ArrayList<PasswordEntry>) savedInstanceState.get(STATE_FILEDATA);
             }
         }
-        assert fileData != null;
-        TableLayout tl = findViewById(R.id.tableLayout);
-        clearTable();
-        for (PasswordEntry entry : fileData) {
-            createTable(tl, entry);
+        if (fileData != null) {
+            rebuildTable();
+        } else {
+            finish();
         }
     }
 
@@ -96,7 +95,7 @@ public class MainScreenActivity extends AppCompatActivity {
         outState.putSerializable(STATE_FILEDATA, fileData);
     }
 
-    public void rebuildTable() {
+    private void rebuildTable() {
         TableLayout tl = findViewById(R.id.tableLayout);
         clearTable();
         for (PasswordEntry entry : fileData) {
@@ -104,7 +103,7 @@ public class MainScreenActivity extends AppCompatActivity {
         }
     }
 
-    public void sort(Comparator<PasswordEntry> comparator, int sortFunction) {
+    private void sort(Comparator<PasswordEntry> comparator, int sortFunction) {
         if (previousSort == sortFunction) {
             ascendingSort = !ascendingSort;
         } else {
@@ -117,7 +116,7 @@ public class MainScreenActivity extends AppCompatActivity {
         rebuildTable();
     }
 
-    public void sortIndex() {
+    private void sortIndex() {
         sort(new Comparator<PasswordEntry>() {
             @Override
             public int compare(PasswordEntry entry0, PasswordEntry entry1) {
@@ -338,7 +337,7 @@ public class MainScreenActivity extends AppCompatActivity {
                 Toast.LENGTH_LONG).show();
     }
 
-    public void save() {
+    private void save() {
         ArrayList<String> dat = new ArrayList<>();
         dat.add(filename);
         for (PasswordEntry entry : fileData) {
@@ -391,7 +390,7 @@ public class MainScreenActivity extends AppCompatActivity {
         tl.addView(tr);
     }
 
-    public void clearTable() {
+    private void clearTable() {
         TableLayout tl = findViewById(R.id.tableLayout);
         TableRow row1 = findViewById(R.id.row1);
         TextView id = new TextView(this);
