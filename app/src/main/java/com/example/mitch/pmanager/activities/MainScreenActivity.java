@@ -104,6 +104,11 @@ public class MainScreenActivity extends AppCompatActivity {
         }
     }
 
+    public void resetSorting() {
+        previousSort = -1;
+        ascendingSort = true;
+    }
+
     public void sort(Comparator<PasswordEntry> comparator, int sortFunction) {
         if (previousSort == sortFunction) {
             ascendingSort = !ascendingSort;
@@ -149,14 +154,15 @@ public class MainScreenActivity extends AppCompatActivity {
                 PasswordEntry e = new PasswordEntry(d, u, p, fileData.size() + 1);
                 fileData.add(e);
                 TableLayout tl = findViewById(R.id.tableLayout);
+
+                resetSorting();
+
                 clearTable();
                 for (PasswordEntry entry : fileData) {
                     createTable(tl, entry);
                 }
 
                 MainActivity.toast("Added", self);
-                ascendingSort = true;
-                sortIndex();
                 save();
             }
         });
@@ -186,6 +192,9 @@ public class MainScreenActivity extends AppCompatActivity {
                 int id = Integer.parseInt(it.getText().toString());
                 ArrayList<PasswordEntry> temp = new ArrayList<>();
                 TableLayout tl = findViewById(R.id.tableLayout);
+
+                resetSorting();
+
                 clearTable();
                 for (PasswordEntry entry : fileData) {
                     if (entry.index != id) {
@@ -199,8 +208,6 @@ public class MainScreenActivity extends AppCompatActivity {
                 fileData = temp;
 
                 MainActivity.toast("Deleted", self);
-                ascendingSort = true;
-                sortIndex();
                 save();
             }
         });
