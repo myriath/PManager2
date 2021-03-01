@@ -102,6 +102,11 @@ public class MainScreenActivity extends AppCompatActivity {
         }
     }
 
+    public void resetSorting() {
+        previousSort = -1;
+        ascendingSort = true;
+    }
+
     private void sort(Comparator<PasswordEntry> comparator, int sortFunction) {
         if (previousSort == sortFunction) {
             ascendingSort = !ascendingSort;
@@ -147,14 +152,15 @@ public class MainScreenActivity extends AppCompatActivity {
                 PasswordEntry e = new PasswordEntry(d, u, p, fileData.size() + 1);
                 fileData.add(e);
                 TableLayout tl = findViewById(R.id.tableLayout);
+
+                resetSorting();
+
                 clearTable();
                 for (PasswordEntry entry : fileData) {
                     createTable(tl, entry);
                 }
 
                 MainActivity.toast("Added", self);
-                ascendingSort = true;
-                sortIndex();
                 save();
             }
         });
@@ -184,6 +190,9 @@ public class MainScreenActivity extends AppCompatActivity {
                 int id = Integer.parseInt(it.getText().toString());
                 ArrayList<PasswordEntry> temp = new ArrayList<>();
                 TableLayout tl = findViewById(R.id.tableLayout);
+
+                resetSorting();
+
                 clearTable();
                 for (PasswordEntry entry : fileData) {
                     if (entry.index != id) {
@@ -197,8 +206,6 @@ public class MainScreenActivity extends AppCompatActivity {
                 fileData = temp;
 
                 MainActivity.toast("Deleted", self);
-                ascendingSort = true;
-                sortIndex();
                 save();
             }
         });
@@ -236,19 +243,19 @@ public class MainScreenActivity extends AppCompatActivity {
 
                 if (domainButton.isChecked()) {
                     for (PasswordEntry entry : fileData) {
-                        if (entry.domain.toLowerCase().equals(filter)) {
+                        if (entry.domain.toLowerCase().contains(filter)) {
                             createTable(tl, entry);
                         }
                     }
                 } else if (usernameButton.isChecked()) {
                     for (PasswordEntry entry : fileData) {
-                        if (entry.username.toLowerCase().equals(filter)) {
+                        if (entry.username.toLowerCase().contains(filter)) {
                             createTable(tl, entry);
                         }
                     }
                 } else if (passwordButton.isChecked()) {
                     for (PasswordEntry entry : fileData) {
-                        if (entry.password.toLowerCase().equals(filter)) {
+                        if (entry.password.toLowerCase().contains(filter)) {
                             createTable(tl, entry);
                         }
                     }
@@ -379,8 +386,10 @@ public class MainScreenActivity extends AppCompatActivity {
         pw.setPadding(5, 5, 5, 5);
         id.setText(String.format(Locale.getDefault(), "%d", entry.index));
         dm.setText(entry.domain);
+        dm.setTextColor(Color.WHITE);
         un.setText(entry.username);
         pw.setText(entry.password);
+        pw.setTextColor(Color.WHITE);
         TableRow tr = new TableRow(this);
         tr.addView(id);
         tr.addView(dm);
@@ -457,8 +466,10 @@ public class MainScreenActivity extends AppCompatActivity {
         });
         id.setText(R.string.table_index);
         dm.setText(R.string.table_domain);
+        dm.setTextColor(Color.WHITE);
         un.setText(R.string.table_username);
         pw.setText(R.string.table_password);
+        pw.setTextColor(Color.WHITE);
         row1.removeAllViews();
         row1.addView(id);
         row1.addView(dm);
