@@ -19,7 +19,7 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <EditText
-            android:id="@+id/dialogPassword"
+            android:id="@+id/dialog_new_password"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ems="10"

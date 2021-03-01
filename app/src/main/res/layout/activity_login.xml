@@ -48,19 +48,6 @@
         app:layout_constraintTop_toBottomOf="@+id/passwordField" />
 
     <Button
-        android:id="@+id/openTextFile"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        android:onClick="openGeneric"
-        android:text="Open Text File"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/openButton" />
-
-    <Button
         android:id="@+id/exportFile"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -110,7 +97,7 @@
         android:text="Delete File"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/openTextFile" />
+        app:layout_constraintTop_toBottomOf="@+id/openButton" />
 
     <Button
         android:id="@+id/delDirs"
@@ -118,9 +105,23 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
+        android:onClick="deleteDirs"
         android:text="Delete In/Out Folders"
         app:layout_constraintBottom_toTopOf="@+id/importFile"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toEndOf="@+id/createDirs" />
+
+    <Button
+        android:id="@+id/changePasswordButton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:onClick="changePassword"
+        android:text="Change Password"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/deleteFile" />
 </android.support.constraint.ConstraintLayout>

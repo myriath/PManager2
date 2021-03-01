@@ -1,5 +1,6 @@
 package com.example.mitch.pmanager.activities;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -26,6 +27,8 @@ import java.io.File;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Locale;
 
 import javax.crypto.NoSuchPaddingException;
 
@@ -39,6 +42,13 @@ public class MainScreenActivity extends AppCompatActivity {
     private static final String STATE_FILENAME = "filename";
     private static final String STATE_PASSWORD = "password";
     private static final String STATE_FILE = "file";
+    private static final int SORT_INDEX = 0;
+    private static final int SORT_DOMAIN = 1;
+    private static final int SORT_USERNAME = 2;
+    private static final int SORT_PASSWORD = 3;
+
+    private int previousSort = -1;
+    private boolean ascendingSort = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,11 +66,10 @@ public class MainScreenActivity extends AppCompatActivity {
                 fileData = (ArrayList<PasswordEntry>) savedInstanceState.get(STATE_FILEDATA);
             }
         }
-        assert fileData != null;
-        TableLayout tl = findViewById(R.id.tableLayout);
-        clearTable();
-        for (PasswordEntry entry : fileData) {
-            createTable(tl, entry);
+        if (fileData != null) {
+            rebuildTable();
+        } else {
+            finish();
         }
     }
 
@@ -75,7 +84,6 @@ public class MainScreenActivity extends AppCompatActivity {
 
     @Override
     protected void onUserLeaveHint() {
-        super.onUserLeaveHint();
         setResult(MainActivity.EXIT);
         finish();
     }
@@ -86,9 +94,49 @@ public class MainScreenActivity extends AppCompatActivity {
         outState.putSerializable(STATE_FILEDATA, fileData);
     }
 
+    private void rebuildTable() {
+        TableLayout tl = findViewById(R.id.tableLayout);
+        clearTable();
+        for (PasswordEntry entry : fileData) {
+            createTable(tl, entry);
+        }
+    }
+
+    public void resetSorting() {
+        previousSort = -1;
+        ascendingSort = true;
+    }
+
+    private void sort(Comparator<PasswordEntry> comparator, int sortFunction) {
+        if (previousSort == sortFunction) {
+            ascendingSort = !ascendingSort;
+        } else {
+            ascendingSort = true;
+        }
+
+        previousSort = sortFunction;
+        fileData.sort(comparator);
+
+        rebuildTable();
+    }
+
+    private void sortIndex() {
+        sort(new Comparator<PasswordEntry>() {
+            @Override
+            public int compare(PasswordEntry entry0, PasswordEntry entry1) {
+                if (ascendingSort) {
+                    return Integer.compare(entry0.index, entry1.index);
+                } else {
+                    return -Integer.compare(entry0.index, entry1.index);
+                }
+            }
+        }, SORT_INDEX);
+    }
+
     public void addButton(View view) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Add Entry");
+        @SuppressLint("InflateParams")
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_add, null);
         final Context self = this;
         builder.setView(dialogLayout);
@@ -104,12 +152,16 @@ public class MainScreenActivity extends AppCompatActivity {
                 PasswordEntry e = new PasswordEntry(d, u, p, fileData.size() + 1);
                 fileData.add(e);
                 TableLayout tl = findViewById(R.id.tableLayout);
+
+                resetSorting();
+
                 clearTable();
                 for (PasswordEntry entry : fileData) {
                     createTable(tl, entry);
                 }
 
                 MainActivity.toast("Added", self);
+                save();
             }
         });
 
@@ -127,6 +179,7 @@ public class MainScreenActivity extends AppCompatActivity {
     public void deleteButton(View view) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Delete Entry");
+        @SuppressLint("InflateParams")
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_delete_entry, null);
         final Context self = this;
         builder.setView(dialogLayout);
@@ -137,6 +190,9 @@ public class MainScreenActivity extends AppCompatActivity {
                 int id = Integer.parseInt(it.getText().toString());
                 ArrayList<PasswordEntry> temp = new ArrayList<>();
                 TableLayout tl = findViewById(R.id.tableLayout);
+
+                resetSorting();
+
                 clearTable();
                 for (PasswordEntry entry : fileData) {
                     if (entry.index != id) {
@@ -150,6 +206,7 @@ public class MainScreenActivity extends AppCompatActivity {
                 fileData = temp;
 
                 MainActivity.toast("Deleted", self);
+                save();
             }
         });
 
@@ -168,6 +225,7 @@ public class MainScreenActivity extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Filter");
         builder.setMessage("Filter by domain, username, and password");
+        @SuppressLint("InflateParams")
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_filter, null);
         final Context self = this;
         builder.setView(dialogLayout);
@@ -185,19 +243,19 @@ public class MainScreenActivity extends AppCompatActivity {
 
                 if (domainButton.isChecked()) {
                     for (PasswordEntry entry : fileData) {
-                        if (entry.domain.toLowerCase().equals(filter)) {
+                        if (entry.domain.toLowerCase().contains(filter)) {
                             createTable(tl, entry);
                         }
                     }
                 } else if (usernameButton.isChecked()) {
                     for (PasswordEntry entry : fileData) {
-                        if (entry.username.toLowerCase().equals(filter)) {
+                        if (entry.username.toLowerCase().contains(filter)) {
                             createTable(tl, entry);
                         }
                     }
                 } else if (passwordButton.isChecked()) {
                     for (PasswordEntry entry : fileData) {
-                        if (entry.password.toLowerCase().equals(filter)) {
+                        if (entry.password.toLowerCase().contains(filter)) {
                             createTable(tl, entry);
                         }
                     }
@@ -221,54 +279,58 @@ public class MainScreenActivity extends AppCompatActivity {
     public void copyButton(View view) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Copy");
+        @SuppressLint("InflateParams")
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_copy, null);
         final Context self = this;
         builder.setView(dialogLayout);
-        builder.setPositiveButton("Copy Username", new DialogInterface.OnClickListener() {
+        builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
                 EditText ct = dialogLayout.findViewById(R.id.dialog_copy_index);
-                int copy = Integer.parseInt(ct.getText().toString());
-                ClipboardManager clipboard = (ClipboardManager)
-                        getSystemService(Context.CLIPBOARD_SERVICE);
-                for (PasswordEntry entry : fileData) {
-                    if (entry.index == copy) {
-                        ClipData clip = ClipData.newPlainText("username", entry.username);
-                        assert clipboard != null;
-                        clipboard.setPrimaryClip(clip);
-                        MainActivity.toast("Copied Username #" + copy, self);
-                    }
+
+                RadioButton copyUsername = dialogLayout.findViewById(R.id.username);
+                RadioButton copyPassword = dialogLayout.findViewById(R.id.password);
+
+                if (copyUsername.isChecked()) {
+                    copy(ct, self, 0);
+                } else if (copyPassword.isChecked()) {
+                    copy(ct, self, 1);
                 }
             }
         });
 
-        builder.setNeutralButton("Cancel", new DialogInterface.OnClickListener() {
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
                 MainActivity.toast("Cancelled", self);
             }
         });
 
-        builder.setNegativeButton("Copy Password", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                EditText ct = dialogLayout.findViewById(R.id.dialog_copy_index);
-                int copy = Integer.parseInt(ct.getText().toString());
-                ClipboardManager clipboard = (ClipboardManager)
-                        getSystemService(Context.CLIPBOARD_SERVICE);
-                for (PasswordEntry entry : fileData) {
-                    if (entry.index == copy) {
-                        ClipData clip = ClipData.newPlainText("password", entry.password);
-                        assert clipboard != null;
-                        clipboard.setPrimaryClip(clip);
-                        MainActivity.toast("Copied Password #" + copy, self);
-                    }
-                }
-            }
-        });
-
         AlertDialog dialog = builder.create();
         dialog.show();
+    }
+
+    private void copy(EditText index, Context self, int function) {
+        int copy = Integer.parseInt(index.getText().toString());
+        ClipboardManager clipboard = (ClipboardManager)
+                getSystemService(Context.CLIPBOARD_SERVICE);
+        for (PasswordEntry entry : fileData) {
+            if (entry.index == copy) {
+                ClipData clip;
+                if (function == 0) {
+                    clip = ClipData.newPlainText("username", entry.username);
+                    MainActivity.toast("Copied Username #" + copy, self);
+                } else {
+                    clip = ClipData.newPlainText("password", entry.password);
+                    MainActivity.toast("Copied Password #" + copy, self);
+                }
+
+                if (clipboard != null) {
+                    clipboard.setPrimaryClip(clip);
+                }
+                return;
+            }
+        }
     }
 
     public void resetFilterButton(View view) {
@@ -281,7 +343,7 @@ public class MainScreenActivity extends AppCompatActivity {
                 Toast.LENGTH_LONG).show();
     }
 
-    public void saveButton(View view) {
+    private void save() {
         ArrayList<String> dat = new ArrayList<>();
         dat.add(filename);
         for (PasswordEntry entry : fileData) {
@@ -294,12 +356,11 @@ public class MainScreenActivity extends AppCompatActivity {
             sb.append(str);
             sb.append('\0');
         }
-        AES f;
         try {
-            f = new AES(AES.pad(password));
+            AES f = new AES(AES.pad(password));
             f.encryptString(sb.toString(), file);
             if (!f.decrypt(file).split(System.lineSeparator())[0].equals(filename)) {
-                saveButton(view);
+                save();
             }
             Toast.makeText(this, "Saved",
                     Toast.LENGTH_LONG).show();
@@ -323,10 +384,12 @@ public class MainScreenActivity extends AppCompatActivity {
         TextView pw = new TextView(this);
         pw.setBackgroundColor(Color.GRAY);
         pw.setPadding(5, 5, 5, 5);
-        id.setText(Integer.toString(entry.index));
+        id.setText(String.format(Locale.getDefault(), "%d", entry.index));
         dm.setText(entry.domain);
+        dm.setTextColor(Color.WHITE);
         un.setText(entry.username);
         pw.setText(entry.password);
+        pw.setTextColor(Color.WHITE);
         TableRow tr = new TableRow(this);
         tr.addView(id);
         tr.addView(dm);
@@ -335,25 +398,78 @@ public class MainScreenActivity extends AppCompatActivity {
         tl.addView(tr);
     }
 
-    public void clearTable() {
+    private void clearTable() {
         TableLayout tl = findViewById(R.id.tableLayout);
         TableRow row1 = findViewById(R.id.row1);
         TextView id = new TextView(this);
         id.setPadding(5, 5, 5, 5);
         id.setBackgroundColor(Color.LTGRAY);
+        id.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                sortIndex();
+            }
+        });
         TextView dm = new TextView(this);
         dm.setBackgroundColor(Color.GRAY);
         dm.setPadding(5, 5, 5, 5);
+        dm.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                sort(new Comparator<PasswordEntry>() {
+                    @Override
+                    public int compare(PasswordEntry entry0, PasswordEntry entry1) {
+                        if (ascendingSort) {
+                            return entry0.domain.toLowerCase().compareTo(entry1.domain.toLowerCase());
+                        } else {
+                            return -entry0.domain.toLowerCase().compareTo(entry1.domain.toLowerCase());
+                        }
+                    }
+                }, SORT_DOMAIN);
+            }
+        });
         TextView un = new TextView(this);
         un.setBackgroundColor(Color.LTGRAY);
         un.setPadding(5, 5, 5, 5);
+        un.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                sort(new Comparator<PasswordEntry>() {
+                    @Override
+                    public int compare(PasswordEntry entry0, PasswordEntry entry1) {
+                        if (ascendingSort) {
+                            return entry0.username.toLowerCase().compareTo(entry1.username.toLowerCase());
+                        } else {
+                            return -entry0.username.toLowerCase().compareTo(entry1.username.toLowerCase());
+                        }
+                    }
+                }, SORT_USERNAME);
+            }
+        });
         TextView pw = new TextView(this);
         pw.setBackgroundColor(Color.GRAY);
         pw.setPadding(5, 5, 5, 5);
+        pw.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                sort(new Comparator<PasswordEntry>() {
+                    @Override
+                    public int compare(PasswordEntry entry0, PasswordEntry entry1) {
+                        if (ascendingSort) {
+                            return entry0.password.toLowerCase().compareTo(entry1.password.toLowerCase());
+                        } else {
+                            return -entry0.password.toLowerCase().compareTo(entry1.password.toLowerCase());
+                        }
+                    }
+                }, SORT_PASSWORD);
+            }
+        });
         id.setText(R.string.table_index);
         dm.setText(R.string.table_domain);
+        dm.setTextColor(Color.WHITE);
         un.setText(R.string.table_username);
         pw.setText(R.string.table_password);
+        pw.setTextColor(Color.WHITE);
         row1.removeAllViews();
         row1.addView(id);
         row1.addView(dm);

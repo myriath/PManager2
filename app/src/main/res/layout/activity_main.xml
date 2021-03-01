@@ -8,29 +8,18 @@
     tools:context=".activities.MainScreenActivity">
 
     <Button
-        android:id="@+id/saveButton"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginBottom="16dp"
-        android:onClick="saveButton"
-        android:text="Save"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/copyButton"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <Button
         android:id="@+id/filterButton"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
+        android:layout_marginEnd="8dp"
         android:layout_marginBottom="16dp"
         android:onClick="filterButton"
         android:text="Filter"
-        app:layout_constraintBottom_toTopOf="@+id/saveButton"
+        app:layout_constraintBottom_toTopOf="@+id/copyButton"
         app:layout_constraintEnd_toStartOf="@+id/resetButton"
         app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintHorizontal_chainStyle="spread"
         app:layout_constraintStart_toStartOf="parent" />
 
     <Button
@@ -52,7 +41,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="11dp"
+        android:layout_marginBottom="16dp"
         android:onClick="addButton"
         android:text="Add"
         app:layout_constraintBottom_toTopOf="@+id/deleteField"
@@ -102,24 +91,32 @@
                                 android:id="@+id/indexLabel"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:clickable="true"
+                                android:onClick="sortIndex"
                                 android:text="Index" />
 
                             <TextView
                                 android:id="@+id/domainLabel"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:clickable="true"
+                                android:onClick="sortDomain"
                                 android:text="Domain" />
 
                             <TextView
                                 android:id="@+id/usernameLabel"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:clickable="true"
+                                android:onClick="sortUsername"
                                 android:text="Username" />
 
                             <TextView
                                 android:id="@+id/passwordLabel"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:clickable="true"
+                                android:onClick="sortPassword"
                                 android:text="Password" />
                         </TableRow>
 
@@ -134,33 +131,27 @@
         android:id="@+id/resetButton"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginStart="8dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
         android:onClick="resetFilterButton"
         android:text="Reset Filter"
-        app:layout_constraintBottom_toTopOf="@+id/saveButton"
+        app:layout_constraintBottom_toTopOf="@+id/copyButton"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/filterButton"
-        app:layout_constraintTop_toBottomOf="@+id/deleteField"
-        app:layout_constraintVertical_bias="1.0" />
+        app:layout_constraintStart_toEndOf="@+id/filterButton" />
 
     <Button
         android:id="@+id/copyButton"
         android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
         android:onClick="copyButton"
         android:text="Copy"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/saveButton"
-        app:layout_constraintTop_toBottomOf="@+id/resetButton" />
+        app:layout_constraintStart_toStartOf="parent" />
 
 </android.support.constraint.ConstraintLayout>
