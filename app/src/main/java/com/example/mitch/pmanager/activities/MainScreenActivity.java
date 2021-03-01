@@ -84,7 +84,6 @@ public class MainScreenActivity extends AppCompatActivity {
 
     @Override
     protected void onUserLeaveHint() {
-        super.onUserLeaveHint();
         setResult(MainActivity.EXIT);
         finish();
     }
