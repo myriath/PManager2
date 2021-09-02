@@ -121,14 +121,12 @@ public class MainScreenActivity extends AppCompatActivity {
     }
 
     private void sortIndex() {
-        sort(new Comparator<PasswordEntry>() {
-            @Override
-            public int compare(PasswordEntry entry0, PasswordEntry entry1) {
-                if (ascendingSort) {
-                    return Integer.compare(entry0.index, entry1.index);
-                } else {
-                    return -Integer.compare(entry0.index, entry1.index);
-                }
+        sort((entry0, entry1) -> {
+            int temp = Integer.compare(entry0.index, entry1.index);
+            if (ascendingSort) {
+                return temp;
+            } else {
+                return -temp;
             }
         }, SORT_INDEX);
     }
@@ -140,37 +138,29 @@ public class MainScreenActivity extends AppCompatActivity {
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_add, null);
         final Context self = this;
         builder.setView(dialogLayout);
-        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                EditText dt = dialogLayout.findViewById(R.id.dialog_domain);
-                EditText ut = dialogLayout.findViewById(R.id.dialog_username);
-                EditText pt = dialogLayout.findViewById(R.id.dialog_password);
-                String d = dt.getText().toString();
-                String u = ut.getText().toString();
-                String p = pt.getText().toString();
-                PasswordEntry e = new PasswordEntry(d, u, p, fileData.size() + 1);
-                fileData.add(e);
-                TableLayout tl = findViewById(R.id.tableLayout);
+        builder.setPositiveButton("OK", (dialogInterface, i) -> {
+            EditText dt = dialogLayout.findViewById(R.id.dialog_domain);
+            EditText ut = dialogLayout.findViewById(R.id.dialog_username);
+            EditText pt = dialogLayout.findViewById(R.id.dialog_password);
+            String d = dt.getText().toString();
+            String u = ut.getText().toString();
+            String p = pt.getText().toString();
+            PasswordEntry e = new PasswordEntry(d, u, p, fileData.size() + 1);
+            fileData.add(e);
+            TableLayout tl = findViewById(R.id.tableLayout);
 
-                resetSorting();
+            resetSorting();
 
-                clearTable();
-                for (PasswordEntry entry : fileData) {
-                    createTable(tl, entry);
-                }
-
-                MainActivity.toast("Added", self);
-                save();
+            clearTable();
+            for (PasswordEntry entry : fileData) {
+                createTable(tl, entry);
             }
+
+            MainActivity.toast("Added", self);
+            save();
         });
 
-        builder.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                MainActivity.toast("Cancelled", self);
-            }
-        });
+        builder.setNegativeButton("CANCEL", (dialogInterface, i) -> MainActivity.toast("Cancelled", self));
 
         AlertDialog dialog = builder.create();
         dialog.show();
@@ -183,39 +173,31 @@ public class MainScreenActivity extends AppCompatActivity {
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_delete_entry, null);
         final Context self = this;
         builder.setView(dialogLayout);
-        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                EditText it = dialogLayout.findViewById(R.id.dialog_index);
-                int id = Integer.parseInt(it.getText().toString());
-                ArrayList<PasswordEntry> temp = new ArrayList<>();
-                TableLayout tl = findViewById(R.id.tableLayout);
+        builder.setPositiveButton("OK", (dialogInterface, i) -> {
+            EditText it = dialogLayout.findViewById(R.id.dialog_index);
+            int id = Integer.parseInt(it.getText().toString());
+            ArrayList<PasswordEntry> temp = new ArrayList<>();
+            TableLayout tl = findViewById(R.id.tableLayout);
 
-                resetSorting();
+            resetSorting();
 
-                clearTable();
-                for (PasswordEntry entry : fileData) {
-                    if (entry.index != id) {
-                        if (entry.index > id) {
-                            entry.index--;
-                        }
-                        createTable(tl, entry);
-                        temp.add(entry);
+            clearTable();
+            for (PasswordEntry entry : fileData) {
+                if (entry.index != id) {
+                    if (entry.index > id) {
+                        entry.index--;
                     }
+                    createTable(tl, entry);
+                    temp.add(entry);
                 }
-                fileData = temp;
-
-                MainActivity.toast("Deleted", self);
-                save();
             }
+            fileData = temp;
+
+            MainActivity.toast("Deleted", self);
+            save();
         });
 
-        builder.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                MainActivity.toast("Cancelled", self);
-            }
-        });
+        builder.setNegativeButton("CANCEL", (dialogInterface, i) -> MainActivity.toast("Cancelled", self));
 
         AlertDialog dialog = builder.create();
         dialog.show();
@@ -229,48 +211,40 @@ public class MainScreenActivity extends AppCompatActivity {
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_filter, null);
         final Context self = this;
         builder.setView(dialogLayout);
-        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                EditText ft = dialogLayout.findViewById(R.id.dialog_filter);
-                String filter = ft.getText().toString().toLowerCase();
-                TableLayout tl = findViewById(R.id.tableLayout);
-                clearTable();
+        builder.setPositiveButton("OK", (dialogInterface, i) -> {
+            EditText ft = dialogLayout.findViewById(R.id.dialog_filter);
+            String filter = ft.getText().toString().toLowerCase();
+            TableLayout tl = findViewById(R.id.tableLayout);
+            clearTable();
 
-                RadioButton domainButton = dialogLayout.findViewById(R.id.dialog_radio_domain);
-                RadioButton usernameButton = dialogLayout.findViewById(R.id.dialog_radio_username);
-                RadioButton passwordButton = dialogLayout.findViewById(R.id.dialog_radio_password);
+            RadioButton domainButton = dialogLayout.findViewById(R.id.dialog_radio_domain);
+            RadioButton usernameButton = dialogLayout.findViewById(R.id.dialog_radio_username);
+            RadioButton passwordButton = dialogLayout.findViewById(R.id.dialog_radio_password);
 
-                if (domainButton.isChecked()) {
-                    for (PasswordEntry entry : fileData) {
-                        if (entry.domain.toLowerCase().contains(filter)) {
-                            createTable(tl, entry);
-                        }
-                    }
-                } else if (usernameButton.isChecked()) {
-                    for (PasswordEntry entry : fileData) {
-                        if (entry.username.toLowerCase().contains(filter)) {
-                            createTable(tl, entry);
-                        }
-                    }
-                } else if (passwordButton.isChecked()) {
-                    for (PasswordEntry entry : fileData) {
-                        if (entry.password.toLowerCase().contains(filter)) {
-                            createTable(tl, entry);
-                        }
+            if (domainButton.isChecked()) {
+                for (PasswordEntry entry : fileData) {
+                    if (entry.domain.toLowerCase().contains(filter)) {
+                        createTable(tl, entry);
                     }
                 }
-
-                MainActivity.toast("Filtered", self);
+            } else if (usernameButton.isChecked()) {
+                for (PasswordEntry entry : fileData) {
+                    if (entry.username.toLowerCase().contains(filter)) {
+                        createTable(tl, entry);
+                    }
+                }
+            } else if (passwordButton.isChecked()) {
+                for (PasswordEntry entry : fileData) {
+                    if (entry.password.toLowerCase().contains(filter)) {
+                        createTable(tl, entry);
+                    }
+                }
             }
+
+            MainActivity.toast("Filtered", self);
         });
 
-        builder.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                MainActivity.toast("Cancelled", self);
-            }
-        });
+        builder.setNegativeButton("CANCEL", (dialogInterface, i) -> MainActivity.toast("Cancelled", self));
 
         AlertDialog dialog = builder.create();
         dialog.show();
@@ -283,28 +257,20 @@ public class MainScreenActivity extends AppCompatActivity {
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_copy, null);
         final Context self = this;
         builder.setView(dialogLayout);
-        builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                EditText ct = dialogLayout.findViewById(R.id.dialog_copy_index);
+        builder.setPositiveButton("Ok", (dialogInterface, i) -> {
+            EditText ct = dialogLayout.findViewById(R.id.dialog_copy_index);
 
-                RadioButton copyUsername = dialogLayout.findViewById(R.id.username);
-                RadioButton copyPassword = dialogLayout.findViewById(R.id.password);
+            RadioButton copyUsername = dialogLayout.findViewById(R.id.username);
+            RadioButton copyPassword = dialogLayout.findViewById(R.id.password);
 
-                if (copyUsername.isChecked()) {
-                    copy(ct, self, 0);
-                } else if (copyPassword.isChecked()) {
-                    copy(ct, self, 1);
-                }
+            if (copyUsername.isChecked()) {
+                copy(ct, self, 0);
+            } else if (copyPassword.isChecked()) {
+                copy(ct, self, 1);
             }
         });
 
-        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                MainActivity.toast("Cancelled", self);
-            }
-        });
+        builder.setNegativeButton("Cancel", (dialogInterface, i) -> MainActivity.toast("Cancelled", self));
 
         AlertDialog dialog = builder.create();
         dialog.show();
@@ -404,66 +370,37 @@ public class MainScreenActivity extends AppCompatActivity {
         TextView id = new TextView(this);
         id.setPadding(5, 5, 5, 5);
         id.setBackgroundColor(Color.LTGRAY);
-        id.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                sortIndex();
-            }
-        });
+        id.setOnClickListener(view -> sortIndex());
         TextView dm = new TextView(this);
         dm.setBackgroundColor(Color.GRAY);
         dm.setPadding(5, 5, 5, 5);
-        dm.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                sort(new Comparator<PasswordEntry>() {
-                    @Override
-                    public int compare(PasswordEntry entry0, PasswordEntry entry1) {
-                        if (ascendingSort) {
-                            return entry0.domain.toLowerCase().compareTo(entry1.domain.toLowerCase());
-                        } else {
-                            return -entry0.domain.toLowerCase().compareTo(entry1.domain.toLowerCase());
-                        }
-                    }
-                }, SORT_DOMAIN);
+        dm.setOnClickListener(view -> sort((entry0, entry1) -> {
+            if (ascendingSort) {
+                return entry0.domain.toLowerCase().compareTo(entry1.domain.toLowerCase());
+            } else {
+                return -entry0.domain.toLowerCase().compareTo(entry1.domain.toLowerCase());
             }
-        });
+        }, SORT_DOMAIN));
         TextView un = new TextView(this);
         un.setBackgroundColor(Color.LTGRAY);
         un.setPadding(5, 5, 5, 5);
-        un.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                sort(new Comparator<PasswordEntry>() {
-                    @Override
-                    public int compare(PasswordEntry entry0, PasswordEntry entry1) {
-                        if (ascendingSort) {
-                            return entry0.username.toLowerCase().compareTo(entry1.username.toLowerCase());
-                        } else {
-                            return -entry0.username.toLowerCase().compareTo(entry1.username.toLowerCase());
-                        }
-                    }
-                }, SORT_USERNAME);
+        un.setOnClickListener(view -> sort((entry0, entry1) -> {
+            if (ascendingSort) {
+                return entry0.username.toLowerCase().compareTo(entry1.username.toLowerCase());
+            } else {
+                return -entry0.username.toLowerCase().compareTo(entry1.username.toLowerCase());
             }
-        });
+        }, SORT_USERNAME));
         TextView pw = new TextView(this);
         pw.setBackgroundColor(Color.GRAY);
         pw.setPadding(5, 5, 5, 5);
-        pw.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                sort(new Comparator<PasswordEntry>() {
-                    @Override
-                    public int compare(PasswordEntry entry0, PasswordEntry entry1) {
-                        if (ascendingSort) {
-                            return entry0.password.toLowerCase().compareTo(entry1.password.toLowerCase());
-                        } else {
-                            return -entry0.password.toLowerCase().compareTo(entry1.password.toLowerCase());
-                        }
-                    }
-                }, SORT_PASSWORD);
+        pw.setOnClickListener(view -> sort((entry0, entry1) -> {
+            if (ascendingSort) {
+                return entry0.password.toLowerCase().compareTo(entry1.password.toLowerCase());
+            } else {
+                return -entry0.password.toLowerCase().compareTo(entry1.password.toLowerCase());
             }
-        });
+        }, SORT_PASSWORD));
         id.setText(R.string.table_index);
         dm.setText(R.string.table_domain);
         dm.setTextColor(Color.WHITE);
