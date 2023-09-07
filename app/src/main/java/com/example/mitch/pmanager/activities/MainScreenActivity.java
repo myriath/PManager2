@@ -1,5 +1,10 @@
 package com.example.mitch.pmanager.activities;
 
+import static com.example.mitch.pmanager.Constants.STATE_FILE;
+import static com.example.mitch.pmanager.Constants.STATE_FILEDATA;
+import static com.example.mitch.pmanager.Constants.STATE_FILENAME;
+import static com.example.mitch.pmanager.Constants.STATE_PASSWORD;
+
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.ClipData;
@@ -21,9 +26,11 @@ import android.widget.Toast;
 
 import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.background.AES;
+import com.example.mitch.pmanager.background.Encryptor;
 import com.example.mitch.pmanager.objects.PasswordEntry;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -36,12 +43,8 @@ public class MainScreenActivity extends AppCompatActivity {
 
     File file;
     String filename;
-    String password;
+    char[] password;
     ArrayList<PasswordEntry> fileData;
-    private static final String STATE_FILEDATA = "filedata";
-    private static final String STATE_FILENAME = "filename";
-    private static final String STATE_PASSWORD = "password";
-    private static final String STATE_FILE = "file";
     private static final int SORT_INDEX = 0;
     private static final int SORT_DOMAIN = 1;
     private static final int SORT_USERNAME = 2;
@@ -59,7 +62,7 @@ public class MainScreenActivity extends AppCompatActivity {
         if (bd != null) {
             file = (File) bd.get(STATE_FILE);
             filename = (String) bd.get(STATE_FILENAME);
-            password = (String) bd.get(STATE_PASSWORD);
+            password = bd.getCharArray(STATE_PASSWORD);
             if (savedInstanceState == null) {
                 fileData = (ArrayList<PasswordEntry>) bd.get(STATE_FILEDATA);
             } else {
@@ -320,17 +323,17 @@ public class MainScreenActivity extends AppCompatActivity {
         StringBuilder sb = new StringBuilder();
         for (String str : dat) {
             sb.append(str);
-            sb.append('\0');
+            sb.append(System.lineSeparator());
         }
         try {
-            AES f = new AES(AES.pad(password));
-            f.encryptString(sb.toString(), file);
-            if (!f.decrypt(file).split(System.lineSeparator())[0].equals(filename)) {
-                save();
-            }
+            byte[] plaintext = sb.toString().getBytes(StandardCharsets.UTF_8);
+            byte[] ad = filename.getBytes(StandardCharsets.UTF_8);
+            Encryptor.EncryptedData encrypted = Encryptor.encrypt(plaintext, ad, password);
+            Encryptor.writeEncrypted(encrypted, file);
+
             Toast.makeText(this, "Saved",
                     Toast.LENGTH_LONG).show();
-        } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException e1) {
+        } catch (Exception e1) {
             Toast.makeText(this, "Warning: File not Saved!",
                     Toast.LENGTH_LONG).show();
             e1.printStackTrace();

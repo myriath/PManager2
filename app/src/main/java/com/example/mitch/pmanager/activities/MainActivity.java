@@ -1,5 +1,13 @@
 package com.example.mitch.pmanager.activities;
 
+import static com.example.mitch.pmanager.Constants.EXTENSION_V2;
+import static com.example.mitch.pmanager.Constants.EXTENSION_V3;
+import static com.example.mitch.pmanager.Constants.STATE_FILE;
+import static com.example.mitch.pmanager.Constants.STATE_FILEDATA;
+import static com.example.mitch.pmanager.Constants.STATE_FILENAME;
+import static com.example.mitch.pmanager.Constants.STATE_PASSWORD;
+import static com.example.mitch.pmanager.Util.toBytes;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
@@ -20,18 +28,16 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import com.example.mitch.pmanager.R;
+import com.example.mitch.pmanager.Util;
 import com.example.mitch.pmanager.background.AES;
+import com.example.mitch.pmanager.background.Encryptor;
 import com.example.mitch.pmanager.exceptions.DecryptionException;
 import com.example.mitch.pmanager.exceptions.DirectoryException;
 import com.example.mitch.pmanager.objects.PasswordEntry;
 import com.example.mitch.pmanager.objects.Perm;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -101,11 +107,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void deleteFile(View view) {
-        String[] strs = setupOpenFile();
-        final String filename = strs[0];
+        char[][] strs;
         final Context self = this;
         try {
-            decryptFile(out, getPassword(), filename);
+            strs = setupOpenFile();
+            final byte[] filename = new String(strs[0]).getBytes(StandardCharsets.UTF_8);
+
+            Encryptor.EncryptedData encrypted = Encryptor.readFromFile(out);
+            Encryptor.decrypt(encrypted, filename, strs[1]);
+
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Are you sure?");
             builder.setMessage("Re-Enter Password");
@@ -116,10 +126,14 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onClick(DialogInterface dialogInterface, int i) {
                     EditText pd = dialogLayout.findViewById(R.id.dialog_new_password);
-                    String pwd = pd.getText().toString();
+                    char[] pwd = new char[pd.length()];
+                    pd.getText().getChars(0, pd.length(), pwd, 0);
                     try {
-                        decryptFile(out, pwd, filename);
+                        Encryptor.EncryptedData encrypted = Encryptor.readFromFile(out);
+                        Encryptor.decrypt(encrypted, filename, pwd);
                         if (out.delete()) {
+                            String plainName = out.getName().split("\\.")[0];
+                            new File(getRoot(), plainName + EXTENSION_V2).delete();
                             toast("File Deleted", self);
                         } else {
                             toast("Warning: File not Deleted!", self);
@@ -146,11 +160,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void changePassword(View view) {
-        String[] strs = setupOpenFile();
-        final String filename = strs[0];
         final Context self = this;
         try {
-            decryptFile(out, getPassword(), filename);
+            char[][] strs = setupOpenFile();
+            final String filename = new String(strs[0]);
+
+            Encryptor.EncryptedData encrypted = Encryptor.readFromFile(out);
+            Encryptor.decrypt(encrypted, filename.getBytes(StandardCharsets.UTF_8), strs[1]);
+
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Change Password");
             @SuppressLint("InflateParams")
@@ -160,7 +177,9 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onClick(DialogInterface dialogInterface, int i) {
                     EditText pd = dialogLayout.findViewById(R.id.dialog_new_password);
-                    String pwd = pd.getText().toString();
+                    int pwdLength = pd.length();
+                    char[] pwd = new char[pwdLength];
+                    pd.getText().getChars(0, pwdLength, pwd, 0);
                     try {
                         updatePassword(filename, pwd, out);
                     } catch (Exception e1) {
@@ -184,7 +203,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void updatePassword(String filename, String newPassword, File file) {
+    public void updatePassword(String filename, char[] newPassword, File file) {
         ArrayList<String> dat = new ArrayList<>();
         dat.add(filename);
         for (PasswordEntry entry : fileData) {
@@ -195,17 +214,21 @@ public class MainActivity extends AppCompatActivity {
         StringBuilder sb = new StringBuilder();
         for (String str : dat) {
             sb.append(str);
-            sb.append('\0');
+            sb.append(System.lineSeparator());
         }
         try {
-            AES f = new AES(AES.pad(newPassword));
-            f.encryptString(sb.toString(), file);
-            if (!f.decrypt(file).split(System.lineSeparator())[0].equals(filename)) {
+            byte[] plaintext = sb.toString().getBytes(StandardCharsets.UTF_8);
+            byte[] ad = filename.getBytes(StandardCharsets.UTF_8);
+            Encryptor.EncryptedData encrypted = Encryptor.encrypt(plaintext, ad, newPassword);
+            if (!new String(Encryptor.decrypt(encrypted, ad, newPassword)).split(System.lineSeparator())[0].equals(filename)) {
                 updatePassword(filename, newPassword, file);
+                return;
             }
+            Encryptor.writeEncrypted(encrypted, file);
+
             Toast.makeText(this, "Saved",
                     Toast.LENGTH_LONG).show();
-        } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException e1) {
+        } catch (Exception e1) {
             Toast.makeText(this, "Warning: File not Saved!",
                     Toast.LENGTH_LONG).show();
             e1.printStackTrace();
@@ -255,96 +278,89 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void importFile(View view) {
-        String file = getFilename();
-        File input = new File(getRoot(), file);
-        String sourcePath = inPath + file;
-        String destinationPath = input.getAbsolutePath();
+        String filename = getFilename();
 
-        File source = new File(sourcePath);
-        File destination = new File(destinationPath);
+        File source = new File(inPath + filename);
+        if (!source.exists()) {
+            filename = getOldFilename();
+            source = new File(inPath + filename);
+        }
 
-        try {
-            InputStream in = new FileInputStream(source);
-            OutputStream out = new FileOutputStream(destination);
-            // Transfer bytes from in to out
-            byte[] buf = new byte[1024];
-            int len;
-            while ((len = in.read(buf)) > 0) {
-                out.write(buf, 0, len);
-            }
+        File destination = new File(getRoot(), filename);
+
+        if (Util.copyFile(source.toPath(), destination.toPath())) {
             toast("File imported", this);
-        } catch (IOException e) {
-            e.printStackTrace();
+        } else {
             toast("Warning: File not imported!", this);
         }
     }
 
     public void exportFile(View view) {
         String file = getFilename();
-        File input = new File(getRoot(), file);
-        String sourcePath = input.getAbsolutePath();
-        String destinationPath = outPath + file;
 
-        File source = new File(sourcePath);
-        File destination = new File(destinationPath);
+        File source = new File(getRoot(), file);
+        File destination = new File(outPath + file);
 
-        try {
-            InputStream in = new FileInputStream(source);
-            OutputStream out = new FileOutputStream(destination);
-            // Transfer bytes from in to out
-            byte[] buf = new byte[1024];
-            int len;
-            while ((len = in.read(buf)) > 0) {
-                out.write(buf, 0, len);
-            }
+        if (Util.copyFile(source.toPath(), destination.toPath())) {
             toast("File Exported", this);
-        } catch (IOException e) {
-            e.printStackTrace();
+        } else {
             toast("Warning: File not Exported!", this);
         }
     }
 
     public void openFile(View view) {
-        String[] strs = setupOpenFile();
-        String filename = strs[0];
-        String password = strs[1];
-        resetFields();
         try {
+            char[][] strs = setupOpenFile();
+            byte[] filename = toBytes(strs[0]);
+            char[] password = strs[1];
+            resetFields();
             String message;
+            byte[] decrypted;
             if (out.exists()) {
-                decryptFile(out, password, filename);
+                Encryptor.EncryptedData encrypted = Encryptor.readFromFile(out);
+                decrypted = Encryptor.decrypt(encrypted, filename, strs[1]);
                 message = "Opened!";
             } else {
-                AES newFile = new AES(AES.pad(password));
-                newFile.encryptString(filename, out);
-                decryptFile(out, password, filename);
+                Encryptor.EncryptedData data = Encryptor.encrypt(filename, filename, password);
+                Encryptor.writeEncrypted(data, out);
                 message = "New File Created!";
+                decrypted = filename;
             }
             toast(message, this);
-            fileData = read(password, out);
+            fileData = parseData(decrypted);
 
             Intent intent = new Intent(this, MainScreenActivity.class);
-            intent.putExtra("file", out);
-            intent.putExtra("filename", filename);
-            intent.putExtra("password", password);
-            intent.putExtra("filedata", fileData);
+            intent.putExtra(STATE_FILE, out);
+            intent.putExtra(STATE_FILENAME, String.valueOf(strs[0]));
+            intent.putExtra(STATE_PASSWORD, password);
+            intent.putExtra(STATE_FILEDATA, fileData);
 
             startActivity(intent);
         } catch (Exception e1) {
             toast("Wrong Password!", this);
+            resetFields();
         }
     }
 
     @NonNull
     private String getFilename() {
         EditText fn = findViewById(R.id.filenameField);
-        return fn.getText().toString() + ".jpweds";
+        return fn.getText().toString() + EXTENSION_V3;
     }
 
     @NonNull
-    private String getPassword() {
+    private String getOldFilename() {
+        EditText fn = findViewById(R.id.filenameField);
+        return fn.getText().toString() + EXTENSION_V2;
+    }
+
+    @NonNull
+    private char[] getPassword() {
         EditText pd = findViewById(R.id.passwordField);
-        return pd.getText().toString();
+        int length = pd.length();
+        char[] ret = new char[length];
+        pd.getText().getChars(0, length, ret, 0);
+        return ret;
     }
 
     @NonNull
@@ -358,27 +374,18 @@ public class MainActivity extends AppCompatActivity {
         return root;
     }
 
-    private void decryptFile(File file, String pwd, String name) throws DecryptionException {
-        String data;
-        try {
-            String[] splitFile;
-            AES decrypt = new AES(AES.pad(pwd));
-            data = decrypt.decrypt(file);
-            splitFile = data.split(System.lineSeparator());
-
-            if (!splitFile[0].equals(name)) {
-                throw new DecryptionException("");
-            }
-        } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new DecryptionException("");
-        }
-    }
-
-    private String[] setupOpenFile() {
+    private char[][] setupOpenFile() throws Exception {
         String filename = getFilename();
-        String password = getPassword();
+        char[] password = getPassword();
         out = new File(getRoot(), filename);
-        return new String[]{filename, password};
+        if (!out.exists()) {
+            File old = new File(getRoot(), getOldFilename());
+            if (old.exists()) {
+                Util.translateV2toV3(old, out, password, getOldFilename(), filename);
+            }
+        }
+
+        return new char[][]{filename.toCharArray(), password};
     }
 
     private void resetFields() {
@@ -392,21 +399,54 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(context, text, Toast.LENGTH_LONG).show();
     }
 
-    public static ArrayList<PasswordEntry> read(String key, File out) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
+    public static ArrayList<PasswordEntry> parseData(byte[] data) {
         ArrayList<PasswordEntry> entries = new ArrayList<>();
-        AES aes = new AES(AES.pad(key));
-        String decrypted = aes.decrypt(out);
+        String decrypted = new String(data);
+
         String[] dataList = decrypted.split(System.lineSeparator());
         String[] entry = new String[3];
-        int i2 = 0;
+        int i = 0;
         int check1 = (dataList.length-1) / 3;
-        while(i2 < check1) {
-            int check0 = i2 * 3 + 1;
+        while(i < check1) {
+            int check0 = i * 3 + 1;
             System.arraycopy(dataList, check0, entry, 0, 3);
-            i2++;
-            entries.add(new PasswordEntry(entry[0], entry[1], entry[2], i2));
+            i++;
+            entries.add(new PasswordEntry(entry[0], entry[1], entry[2], i));
         }
         return entries;
+    }
+
+    public void createTestOldFile(View view) {
+        File file = new File(getRoot(), "test.jpweds");
+        File file2 = new File(getRoot(), "test.pm3");
+        file.delete();
+        file2.delete();
+
+        ArrayList<String> dat = new ArrayList<>();
+        dat.add("test.jpweds");
+        for (int i = 0; i < 10; i++) {
+            dat.add(String.format("Domain%d", i));
+            dat.add(String.format("Username%d", i));
+            dat.add(String.format("Password%d", i));
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String str : dat) {
+            sb.append(str);
+            sb.append('\0');
+        }
+        try {
+            AES f = new AES(AES.pad("testpass"));
+            f.encryptString(sb.toString(), file);
+            if (!f.decrypt(file).split(System.lineSeparator())[0].equals("test.jpweds")) {
+                createTestOldFile(view);
+            }
+            Toast.makeText(this, "Saved",
+                    Toast.LENGTH_LONG).show();
+        } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException e1) {
+            Toast.makeText(this, "Warning: File not Saved!",
+                    Toast.LENGTH_LONG).show();
+            e1.printStackTrace();
+        }
     }
 }
 
