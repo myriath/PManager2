@@ -17,17 +17,39 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+/**
+ * Outdated encryption class for v2 encryption
+ * INSECURE AND DEPRECATED! DO NOT USE FOR NEW FILES!
+ */
+@Deprecated
 public class AES {
+    /**
+     * Cipher for this encryption
+     */
+    private final Cipher cipher;
+    /**
+     * Key for this encryption
+     */
+    private final SecretKeySpec key;
 
-    private Cipher cipher;
-    private SecretKeySpec key;
-
+    /**
+     * Constructor
+     * @param keyString password to create a key from
+     * @throws NoSuchPaddingException Thrown if padding errors occur
+     * @throws NoSuchAlgorithmException Thrown if AES/CBC/PKCS5Padding is removed
+     */
     public AES(String keyString) throws NoSuchPaddingException, NoSuchAlgorithmException {
         byte[] keyBytes = keyString.getBytes(StandardCharsets.UTF_8);
         key = new SecretKeySpec(keyBytes, "AES");
         cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
     }
 
+    /**
+     * Encrypts the given string into the `out` file
+     * @param toEncrypt String to encrypt
+     * @param out Output file
+     * @throws InvalidKeyException Thrown if the key is invalid (incorrect password)
+     */
     public void encryptString(String toEncrypt, File out) throws InvalidKeyException {
         byte[] bytes = toEncrypt.getBytes(StandardCharsets.UTF_8);
         cipher.init(Cipher.ENCRYPT_MODE, key);
@@ -43,6 +65,12 @@ public class AES {
         }
     }
 
+    /**
+     * Decrypts a given file
+     * @param out File to decrypt
+     * @return String of the decrypted data
+     * @throws InvalidKeyException Thrown if the key is invalid (incorrect password)
+     */
     public String decrypt(File out) throws InvalidKeyException {
         String content;
         try (FileInputStream fileIn = new FileInputStream(out)) {
@@ -70,6 +98,11 @@ public class AES {
         return content;
     }
 
+    /**
+     * Pads a given string to a proper key length
+     * @param toPad String to pad
+     * @return Key string padded with 0s
+     */
     public static String pad(String toPad) {
         StringBuilder padded = new StringBuilder(toPad);
         if (toPad.length() < 16) {

@@ -1,26 +1,28 @@
 package com.example.mitch.pmanager;
 
-import com.example.mitch.pmanager.background.AES;
-import com.example.mitch.pmanager.background.Encryptor;
-import com.example.mitch.pmanager.exceptions.DecryptionException;
+import android.view.View;
+import android.widget.EditText;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
-import javax.crypto.NoSuchPaddingException;
-
+/**
+ * Utilities class for various functions used in multiple places.
+ */
 public class Util {
+    /**
+     * Copies the file at source to dest in 1MB chunks
+     * @param source Path to the source file
+     * @param dest Path to the destination file
+     * @return True if the copy succeeded, false if it failed.
+     */
     public static boolean copyFile(Path source, Path dest) {
         try (
                 InputStream in = Files.newInputStream(source);
@@ -39,31 +41,84 @@ public class Util {
         }
     }
 
-    public static void translateV2toV3(File in, File out, char[] pwd, String oldFilename, String filename) throws Exception {
-        String data;
-        try {
-            String[] splitFile;
-            AES decrypt = new AES(AES.pad(String.valueOf(pwd)));
-            data = decrypt.decrypt(in);
-            splitFile = data.split(System.lineSeparator());
-
-            if (!splitFile[0].equals(oldFilename)) {
-                translateV2toV3(in, out, pwd, oldFilename, filename);
-            }
-        } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new DecryptionException("");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
-        data = filename + data.substring(data.indexOf(System.lineSeparator()));
-        byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
-        byte[] ad = filename.getBytes(StandardCharsets.UTF_8);
-        Encryptor.EncryptedData encrypted = Encryptor.encrypt(dataBytes, ad, pwd);
-        Encryptor.writeEncrypted(encrypted, out);
+    /**
+     * Gets a string of the contents of a given EditText
+     * @param viewId R id of the edit text to read
+     * @param view Source view to find the edit text in
+     * @return String of the edit text's contents.
+     */
+    public static String getFieldString(int viewId, View view) {
+        EditText field = view.findViewById(viewId);
+        return field.getText().toString();
     }
 
-    public static byte[] toBytes(char[] arr) {
+    /**
+     * Gets a char[] of the contents of a given EditText.
+     * Avoids creating any strings for secure access.
+     * @param viewId R id of the edit text to read
+     * @param view Source view to find the edit text in
+     * @return char[] of the contents.
+     */
+    public static char[] getFieldChars(int viewId, View view) {
+        EditText field = view.findViewById(viewId);
+        int length = field.length();
+        char[] chars = new char[length];
+        field.getText().getChars(0, length, chars, 0);
+        return chars;
+    }
+
+    /**
+     * Splits a char[] into a char[][] by the given splitter char
+     * @param toSplit char[] to split
+     * @param splitter char to split toSplit by
+     * @return char[][]
+     */
+    public static char[][] splitByChar(char[] toSplit, char splitter) {
+        int i;
+        int terms = 0;
+        char[][] temp = new char[toSplit.length][];
+        int last = 0;
+        for (i = 0; i < toSplit.length; i++) {
+            if (toSplit[i] == splitter) {
+                temp[terms++] = new char[i - last];
+                last = i+1;
+            }
+        }
+        temp[terms++] = new char[i - last];
+        int term = 0;
+        i = 0;
+        for (char c : toSplit) {
+            if (c == splitter) {
+                term++;
+                i = 0;
+                continue;
+            }
+            temp[term][i++] = c;
+        }
+        char[][] ret = new char[terms][];
+        System.arraycopy(temp, 0, ret, 0, terms);
+        return ret;
+    }
+
+    /**
+     * Converts an array of bytes to an array of chars
+     * @param arr bytes to convert
+     * @return converted chars
+     */
+    public static char[] bytesToChars(byte[] arr) {
+        ByteBuffer byteBuffer = ByteBuffer.wrap(arr);
+        CharBuffer charBuffer = StandardCharsets.UTF_8.decode(byteBuffer);
+        char[] chars = Arrays.copyOfRange(charBuffer.array(), charBuffer.position(), charBuffer.limit());
+        Arrays.fill(charBuffer.array(), (char) 0);
+        return chars;
+    }
+
+    /**
+     * Converts a char[] to a byte[]
+     * @param arr array to convert
+     * @return converted byte[]
+     */
+    public static byte[] charsToBytes(char[] arr) {
         CharBuffer charBuffer = CharBuffer.wrap(arr);
         ByteBuffer byteBuffer = StandardCharsets.UTF_8.encode(charBuffer);
         byte[] bytes = Arrays.copyOfRange(byteBuffer.array(), byteBuffer.position(), byteBuffer.limit());

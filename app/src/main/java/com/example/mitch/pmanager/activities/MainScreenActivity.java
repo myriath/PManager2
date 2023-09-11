@@ -4,13 +4,14 @@ import static com.example.mitch.pmanager.Constants.STATE_FILE;
 import static com.example.mitch.pmanager.Constants.STATE_FILEDATA;
 import static com.example.mitch.pmanager.Constants.STATE_FILENAME;
 import static com.example.mitch.pmanager.Constants.STATE_PASSWORD;
+import static com.example.mitch.pmanager.Util.getFieldChars;
+import static com.example.mitch.pmanager.Util.getFieldString;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -25,25 +26,20 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.mitch.pmanager.R;
-import com.example.mitch.pmanager.background.AES;
-import com.example.mitch.pmanager.background.Encryptor;
+import com.example.mitch.pmanager.objects.PMFile;
 import com.example.mitch.pmanager.objects.PasswordEntry;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
+import java.nio.CharBuffer;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Locale;
-
-import javax.crypto.NoSuchPaddingException;
 
 public class MainScreenActivity extends AppCompatActivity {
 
     File file;
-    String filename;
+    byte[] filename;
     char[] password;
+    PMFile pmFile;
     ArrayList<PasswordEntry> fileData;
     private static final int SORT_INDEX = 0;
     private static final int SORT_DOMAIN = 1;
@@ -61,15 +57,16 @@ public class MainScreenActivity extends AppCompatActivity {
         Bundle bd = getIntent().getExtras();
         if (bd != null) {
             file = (File) bd.get(STATE_FILE);
-            filename = (String) bd.get(STATE_FILENAME);
+            filename = bd.getByteArray(STATE_FILENAME);
             password = bd.getCharArray(STATE_PASSWORD);
             if (savedInstanceState == null) {
-                fileData = (ArrayList<PasswordEntry>) bd.get(STATE_FILEDATA);
+                pmFile = (PMFile) bd.getSerializable(STATE_FILEDATA);
             } else {
-                fileData = (ArrayList<PasswordEntry>) savedInstanceState.get(STATE_FILEDATA);
+                pmFile = (PMFile) savedInstanceState.getSerializable(STATE_FILEDATA);
             }
         }
-        if (fileData != null) {
+        if (pmFile != null) {
+            fileData = pmFile.getPasswordEntries();
             rebuildTable();
         } else {
             finish();
@@ -94,7 +91,7 @@ public class MainScreenActivity extends AppCompatActivity {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putSerializable(STATE_FILEDATA, fileData);
+        outState.putSerializable(STATE_FILEDATA, pmFile);
     }
 
     private void rebuildTable() {
@@ -110,7 +107,7 @@ public class MainScreenActivity extends AppCompatActivity {
         ascendingSort = true;
     }
 
-    private void sort(Comparator<PasswordEntry> comparator, int sortFunction) {
+    private void sort(int sortFunction) {
         if (previousSort == sortFunction) {
             ascendingSort = !ascendingSort;
         } else {
@@ -118,20 +115,40 @@ public class MainScreenActivity extends AppCompatActivity {
         }
 
         previousSort = sortFunction;
-        fileData.sort(comparator);
+        fileData.sort((entry0, entry1) -> {
+            Integer temp = null;
+            char[] c0;
+            char[] c1;
+            switch (sortFunction) {
+                case SORT_INDEX: {
+                    temp = Integer.compare(entry0.index, entry1.index);
+                    c0 = new char[0];
+                    c1 = new char[0];
+                    break;
+                }
+                case SORT_DOMAIN: {
+                    c0 = entry0.domain;
+                    c1 = entry1.domain;
+                    break;
+                }
+                case SORT_USERNAME: {
+                    c0 = entry0.username;
+                    c1 = entry1.username;
+                    break;
+                }
+                default: {
+                    c0 = entry0.password;
+                    c1 = entry1.password;
+                    break;
+                }
+            }
+            String s0 = String.valueOf(c0).toLowerCase();
+            String s1 = String.valueOf(c1).toLowerCase();
+            int res = temp == null ? s0.compareTo(s1) : temp;
+            return ascendingSort ? res : -res;
+        });
 
         rebuildTable();
-    }
-
-    private void sortIndex() {
-        sort((entry0, entry1) -> {
-            int temp = Integer.compare(entry0.index, entry1.index);
-            if (ascendingSort) {
-                return temp;
-            } else {
-                return -temp;
-            }
-        }, SORT_INDEX);
     }
 
     public void addButton(View view) {
@@ -142,13 +159,10 @@ public class MainScreenActivity extends AppCompatActivity {
         final Context self = this;
         builder.setView(dialogLayout);
         builder.setPositiveButton("OK", (dialogInterface, i) -> {
-            EditText dt = dialogLayout.findViewById(R.id.dialog_domain);
-            EditText ut = dialogLayout.findViewById(R.id.dialog_username);
-            EditText pt = dialogLayout.findViewById(R.id.dialog_password);
-            String d = dt.getText().toString();
-            String u = ut.getText().toString();
-            String p = pt.getText().toString();
-            PasswordEntry e = new PasswordEntry(d, u, p, fileData.size() + 1);
+            char[] domain = getFieldChars(R.id.dialog_domain, dialogLayout);
+            char[] username = getFieldChars(R.id.dialog_username, dialogLayout);
+            char[] password = getFieldChars(R.id.dialog_password, dialogLayout);
+            PasswordEntry e = new PasswordEntry(domain, username, password, fileData.size() + 1);
             fileData.add(e);
             TableLayout tl = findViewById(R.id.tableLayout);
 
@@ -160,7 +174,7 @@ public class MainScreenActivity extends AppCompatActivity {
             }
 
             MainActivity.toast("Added", self);
-            save();
+            pmFile.writeFile(filename, this.password, file);
         });
 
         builder.setNegativeButton("CANCEL", (dialogInterface, i) -> MainActivity.toast("Cancelled", self));
@@ -177,8 +191,7 @@ public class MainScreenActivity extends AppCompatActivity {
         final Context self = this;
         builder.setView(dialogLayout);
         builder.setPositiveButton("OK", (dialogInterface, i) -> {
-            EditText it = dialogLayout.findViewById(R.id.dialog_index);
-            int id = Integer.parseInt(it.getText().toString());
+            int id = Integer.parseInt(getFieldString(R.id.dialog_index, dialogLayout));
             ArrayList<PasswordEntry> temp = new ArrayList<>();
             TableLayout tl = findViewById(R.id.tableLayout);
 
@@ -197,7 +210,7 @@ public class MainScreenActivity extends AppCompatActivity {
             fileData = temp;
 
             MainActivity.toast("Deleted", self);
-            save();
+            pmFile.writeFile(filename, password, file);
         });
 
         builder.setNegativeButton("CANCEL", (dialogInterface, i) -> MainActivity.toast("Cancelled", self));
@@ -215,8 +228,7 @@ public class MainScreenActivity extends AppCompatActivity {
         final Context self = this;
         builder.setView(dialogLayout);
         builder.setPositiveButton("OK", (dialogInterface, i) -> {
-            EditText ft = dialogLayout.findViewById(R.id.dialog_filter);
-            String filter = ft.getText().toString().toLowerCase();
+            String filter = getFieldString(R.id.dialog_filter, dialogLayout).toLowerCase();
             TableLayout tl = findViewById(R.id.tableLayout);
             clearTable();
 
@@ -226,19 +238,19 @@ public class MainScreenActivity extends AppCompatActivity {
 
             if (domainButton.isChecked()) {
                 for (PasswordEntry entry : fileData) {
-                    if (entry.domain.toLowerCase().contains(filter)) {
+                    if (String.valueOf(entry.domain).toLowerCase().contains(filter)) {
                         createTable(tl, entry);
                     }
                 }
             } else if (usernameButton.isChecked()) {
                 for (PasswordEntry entry : fileData) {
-                    if (entry.username.toLowerCase().contains(filter)) {
+                    if (String.valueOf(entry.username).toLowerCase().contains(filter)) {
                         createTable(tl, entry);
                     }
                 }
             } else if (passwordButton.isChecked()) {
                 for (PasswordEntry entry : fileData) {
-                    if (entry.password.toLowerCase().contains(filter)) {
+                    if (String.valueOf(entry.password).toLowerCase().contains(filter)) {
                         createTable(tl, entry);
                     }
                 }
@@ -287,10 +299,10 @@ public class MainScreenActivity extends AppCompatActivity {
             if (entry.index == copy) {
                 ClipData clip;
                 if (function == 0) {
-                    clip = ClipData.newPlainText("username", entry.username);
+                    clip = ClipData.newPlainText("username", CharBuffer.wrap(entry.username));
                     MainActivity.toast("Copied Username #" + copy, self);
                 } else {
-                    clip = ClipData.newPlainText("password", entry.password);
+                    clip = ClipData.newPlainText("password", CharBuffer.wrap(entry.password));
                     MainActivity.toast("Copied Password #" + copy, self);
                 }
 
@@ -312,34 +324,6 @@ public class MainScreenActivity extends AppCompatActivity {
                 Toast.LENGTH_LONG).show();
     }
 
-    private void save() {
-        ArrayList<String> dat = new ArrayList<>();
-        dat.add(filename);
-        for (PasswordEntry entry : fileData) {
-            dat.add(entry.domain);
-            dat.add(entry.username);
-            dat.add(entry.password);
-        }
-        StringBuilder sb = new StringBuilder();
-        for (String str : dat) {
-            sb.append(str);
-            sb.append(System.lineSeparator());
-        }
-        try {
-            byte[] plaintext = sb.toString().getBytes(StandardCharsets.UTF_8);
-            byte[] ad = filename.getBytes(StandardCharsets.UTF_8);
-            Encryptor.EncryptedData encrypted = Encryptor.encrypt(plaintext, ad, password);
-            Encryptor.writeEncrypted(encrypted, file);
-
-            Toast.makeText(this, "Saved",
-                    Toast.LENGTH_LONG).show();
-        } catch (Exception e1) {
-            Toast.makeText(this, "Warning: File not Saved!",
-                    Toast.LENGTH_LONG).show();
-            e1.printStackTrace();
-        }
-    }
-
     private void createTable(TableLayout tl, PasswordEntry entry) {
         TextView id = new TextView(this);
         id.setPadding(5, 5, 5, 5);
@@ -354,10 +338,10 @@ public class MainScreenActivity extends AppCompatActivity {
         pw.setBackgroundColor(Color.GRAY);
         pw.setPadding(5, 5, 5, 5);
         id.setText(String.format(Locale.getDefault(), "%d", entry.index));
-        dm.setText(entry.domain);
+        dm.setText(entry.domain, 0, entry.domain.length);
         dm.setTextColor(Color.WHITE);
-        un.setText(entry.username);
-        pw.setText(entry.password);
+        un.setText(entry.username, 0, entry.username.length);
+        pw.setText(entry.password, 0, entry.password.length);
         pw.setTextColor(Color.WHITE);
         TableRow tr = new TableRow(this);
         tr.addView(id);
@@ -373,37 +357,19 @@ public class MainScreenActivity extends AppCompatActivity {
         TextView id = new TextView(this);
         id.setPadding(5, 5, 5, 5);
         id.setBackgroundColor(Color.LTGRAY);
-        id.setOnClickListener(view -> sortIndex());
+        id.setOnClickListener(view -> sort(SORT_INDEX));
         TextView dm = new TextView(this);
         dm.setBackgroundColor(Color.GRAY);
         dm.setPadding(5, 5, 5, 5);
-        dm.setOnClickListener(view -> sort((entry0, entry1) -> {
-            if (ascendingSort) {
-                return entry0.domain.toLowerCase().compareTo(entry1.domain.toLowerCase());
-            } else {
-                return -entry0.domain.toLowerCase().compareTo(entry1.domain.toLowerCase());
-            }
-        }, SORT_DOMAIN));
+        dm.setOnClickListener(view -> sort(SORT_DOMAIN));
         TextView un = new TextView(this);
         un.setBackgroundColor(Color.LTGRAY);
         un.setPadding(5, 5, 5, 5);
-        un.setOnClickListener(view -> sort((entry0, entry1) -> {
-            if (ascendingSort) {
-                return entry0.username.toLowerCase().compareTo(entry1.username.toLowerCase());
-            } else {
-                return -entry0.username.toLowerCase().compareTo(entry1.username.toLowerCase());
-            }
-        }, SORT_USERNAME));
+        un.setOnClickListener(view -> sort(SORT_USERNAME));
         TextView pw = new TextView(this);
         pw.setBackgroundColor(Color.GRAY);
         pw.setPadding(5, 5, 5, 5);
-        pw.setOnClickListener(view -> sort((entry0, entry1) -> {
-            if (ascendingSort) {
-                return entry0.password.toLowerCase().compareTo(entry1.password.toLowerCase());
-            } else {
-                return -entry0.password.toLowerCase().compareTo(entry1.password.toLowerCase());
-            }
-        }, SORT_PASSWORD));
+        pw.setOnClickListener(view -> sort(SORT_PASSWORD));
         id.setText(R.string.table_index);
         dm.setText(R.string.table_domain);
         dm.setTextColor(Color.WHITE);

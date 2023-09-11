@@ -6,13 +6,16 @@ import static com.example.mitch.pmanager.Constants.STATE_FILE;
 import static com.example.mitch.pmanager.Constants.STATE_FILEDATA;
 import static com.example.mitch.pmanager.Constants.STATE_FILENAME;
 import static com.example.mitch.pmanager.Constants.STATE_PASSWORD;
-import static com.example.mitch.pmanager.Util.toBytes;
+import static com.example.mitch.pmanager.Constants.V2;
+import static com.example.mitch.pmanager.Constants.V3;
+import static com.example.mitch.pmanager.Util.charsToBytes;
+import static com.example.mitch.pmanager.Util.getFieldChars;
+import static com.example.mitch.pmanager.Util.getFieldString;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -30,14 +33,11 @@ import android.widget.Toast;
 import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.Util;
 import com.example.mitch.pmanager.background.AES;
-import com.example.mitch.pmanager.background.Encryptor;
-import com.example.mitch.pmanager.exceptions.DecryptionException;
 import com.example.mitch.pmanager.exceptions.DirectoryException;
-import com.example.mitch.pmanager.objects.PasswordEntry;
+import com.example.mitch.pmanager.objects.PMFile;
 import com.example.mitch.pmanager.objects.Perm;
 
 import java.io.File;
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -47,7 +47,6 @@ import javax.crypto.NoSuchPaddingException;
 public class MainActivity extends AppCompatActivity {
 
     File out;
-    ArrayList<PasswordEntry> fileData;
     public static final int REQUEST_WRITE_STORAGE = 0;
     public static final int REQUEST_READ_STORAGE = 1;
     public static final int EXIT = 2;
@@ -72,6 +71,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Checks a given permission.
+     * @param permission Permission to check for.
+     */
     private void checkPermission(Perm permission) {
         if (ContextCompat.checkSelfPermission(this, permission.permission)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -80,6 +83,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Checks we have permissions for the external and internal storage
+     */
     private void checkPerms() {
         Perm permA = new Perm(Manifest.permission.READ_EXTERNAL_STORAGE, REQUEST_READ_STORAGE);
         checkPermission(permA);
@@ -106,15 +112,18 @@ public class MainActivity extends AppCompatActivity {
         resetFields();
     }
 
+    /**
+     * Code to delete a file. Double checks via password to make sure the user wants to delete.
+     * Deletes both v2 and v3 files.
+     * @param view For button onClick()
+     */
     public void deleteFile(View view) {
-        char[][] strs;
         final Context self = this;
         try {
-            strs = setupOpenFile();
-            final byte[] filename = new String(strs[0]).getBytes(StandardCharsets.UTF_8);
+            char[][] strs = setupOpenFile();
+            final byte[] filename = charsToBytes(strs[0]);
 
-            Encryptor.EncryptedData encrypted = Encryptor.readFromFile(out);
-            Encryptor.decrypt(encrypted, filename, strs[1]);
+            PMFile.readFile(filename, strs[1], out);
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Are you sure?");
@@ -122,34 +131,23 @@ public class MainActivity extends AppCompatActivity {
             @SuppressLint("InflateParams")
             final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_delete_file, null);
             builder.setView(dialogLayout);
-            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    EditText pd = dialogLayout.findViewById(R.id.dialog_new_password);
-                    char[] pwd = new char[pd.length()];
-                    pd.getText().getChars(0, pd.length(), pwd, 0);
-                    try {
-                        Encryptor.EncryptedData encrypted = Encryptor.readFromFile(out);
-                        Encryptor.decrypt(encrypted, filename, pwd);
-                        if (out.delete()) {
-                            String plainName = out.getName().split("\\.")[0];
-                            new File(getRoot(), plainName + EXTENSION_V2).delete();
-                            toast("File Deleted", self);
-                        } else {
-                            toast("Warning: File not Deleted!", self);
-                        }
-                    } catch (Exception e1) {
-                        toast("Wrong Password!", self);
+            builder.setPositiveButton("OK", (dialogInterface, i) -> {
+                char[] pwd = getFieldChars(R.id.dialog_new_password, dialogLayout);
+                try {
+                    PMFile.readFile(filename, pwd, out);
+                    if (out.delete()) {
+                        String plainName = out.getName().split("\\.")[0];
+                        new File(getRoot(), plainName + EXTENSION_V2).delete();
+                        toast("File Deleted", self);
+                    } else {
+                        toast("Warning: File not Deleted!", self);
                     }
+                } catch (Exception e1) {
+                    toast("Wrong Password!", self);
                 }
             });
 
-            builder.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    toast("Cancelled", self);
-                }
-            });
+            builder.setNegativeButton("CANCEL", (dialogInterface, i) -> toast("Cancelled", self));
 
             AlertDialog dialog = builder.create();
             dialog.show();
@@ -159,41 +157,32 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Code for changing the password of a specified file.
+     * @param view For button onClick()
+     */
     public void changePassword(View view) {
         final Context self = this;
         try {
             char[][] strs = setupOpenFile();
-            final String filename = new String(strs[0]);
-
-            Encryptor.EncryptedData encrypted = Encryptor.readFromFile(out);
-            Encryptor.decrypt(encrypted, filename.getBytes(StandardCharsets.UTF_8), strs[1]);
+            final byte[] filename = charsToBytes(strs[0]);
+            final PMFile pmFile = PMFile.readFile(filename, strs[1], out);
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Change Password");
             @SuppressLint("InflateParams")
             final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_change_password, null);
             builder.setView(dialogLayout);
-            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    EditText pd = dialogLayout.findViewById(R.id.dialog_new_password);
-                    int pwdLength = pd.length();
-                    char[] pwd = new char[pwdLength];
-                    pd.getText().getChars(0, pwdLength, pwd, 0);
-                    try {
-                        updatePassword(filename, pwd, out);
-                    } catch (Exception e1) {
-                        toast("Wrong Password!", self);
-                    }
+            builder.setPositiveButton("OK", (dialogInterface, i) -> {
+                char[] pwd = getFieldChars(R.id.dialog_new_password, dialogLayout);
+                try {
+                    pmFile.writeFile(filename, pwd, out);
+                } catch (Exception e1) {
+                    toast("Wrong Password!", self);
                 }
             });
 
-            builder.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    toast("Cancelled", self);
-                }
-            });
+            builder.setNegativeButton("CANCEL", (dialogInterface, i) -> toast("Cancelled", self));
 
             AlertDialog dialog = builder.create();
             dialog.show();
@@ -203,38 +192,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void updatePassword(String filename, char[] newPassword, File file) {
-        ArrayList<String> dat = new ArrayList<>();
-        dat.add(filename);
-        for (PasswordEntry entry : fileData) {
-            dat.add(entry.domain);
-            dat.add(entry.username);
-            dat.add(entry.password);
-        }
-        StringBuilder sb = new StringBuilder();
-        for (String str : dat) {
-            sb.append(str);
-            sb.append(System.lineSeparator());
-        }
-        try {
-            byte[] plaintext = sb.toString().getBytes(StandardCharsets.UTF_8);
-            byte[] ad = filename.getBytes(StandardCharsets.UTF_8);
-            Encryptor.EncryptedData encrypted = Encryptor.encrypt(plaintext, ad, newPassword);
-            if (!new String(Encryptor.decrypt(encrypted, ad, newPassword)).split(System.lineSeparator())[0].equals(filename)) {
-                updatePassword(filename, newPassword, file);
-                return;
-            }
-            Encryptor.writeEncrypted(encrypted, file);
-
-            Toast.makeText(this, "Saved",
-                    Toast.LENGTH_LONG).show();
-        } catch (Exception e1) {
-            Toast.makeText(this, "Warning: File not Saved!",
-                    Toast.LENGTH_LONG).show();
-            e1.printStackTrace();
-        }
-    }
-
+    /**
+     * Creates the in/out folders
+     * @param view For button onClick()
+     */
     public void createDirs(View view) {
         File inDir = new File(inPath);
         File outDir = new File(outPath);
@@ -256,6 +217,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Deletes the in/out folders
+     * @param view For button onClick()
+     */
     public void deleteDirs(View view) {
         File inDir = new File(inPath);
         File outDir = new File(outPath);
@@ -277,12 +242,16 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Imports the file from the downloads in/out folder.
+     * @param view For button onClick()
+     */
     public void importFile(View view) {
-        String filename = getFilename();
+        String filename = getExtendedFilename(V3);
 
         File source = new File(inPath + filename);
         if (!source.exists()) {
-            filename = getOldFilename();
+            filename = getExtendedFilename(V3);
             source = new File(inPath + filename);
         }
 
@@ -295,8 +264,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Exports the file to the downloads in/out folder.
+     * @param view For button onClick()
+     */
     public void exportFile(View view) {
-        String file = getFilename();
+        String file = getExtendedFilename(V3);
 
         File source = new File(getRoot(), file);
         File destination = new File(outPath + file);
@@ -308,32 +281,30 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Opens the file specified if valid credentials.
+     * @param view For button onClick()
+     */
     public void openFile(View view) {
         try {
             char[][] strs = setupOpenFile();
-            byte[] filename = toBytes(strs[0]);
+            byte[] filename = charsToBytes(strs[0]);
             char[] password = strs[1];
             resetFields();
             String message;
-            byte[] decrypted;
             if (out.exists()) {
-                Encryptor.EncryptedData encrypted = Encryptor.readFromFile(out);
-                decrypted = Encryptor.decrypt(encrypted, filename, strs[1]);
                 message = "Opened!";
             } else {
-                Encryptor.EncryptedData data = Encryptor.encrypt(filename, filename, password);
-                Encryptor.writeEncrypted(data, out);
+                new PMFile(3, new ArrayList<>()).writeFile(filename, password, out);
                 message = "New File Created!";
-                decrypted = filename;
             }
             toast(message, this);
-            fileData = parseData(decrypted);
 
             Intent intent = new Intent(this, MainScreenActivity.class);
             intent.putExtra(STATE_FILE, out);
-            intent.putExtra(STATE_FILENAME, String.valueOf(strs[0]));
+            intent.putExtra(STATE_FILENAME, filename);
             intent.putExtra(STATE_PASSWORD, password);
-            intent.putExtra(STATE_FILEDATA, fileData);
+            intent.putExtra(STATE_FILEDATA, PMFile.readFile(filename, password, out));
 
             startActivity(intent);
         } catch (Exception e1) {
@@ -342,27 +313,39 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @NonNull
+    /**
+     * Gets the raw filename without any extensions.
+     * @return Raw filename.
+     */
     private String getFilename() {
-        EditText fn = findViewById(R.id.filenameField);
-        return fn.getText().toString() + EXTENSION_V3;
+        return getFieldString(R.id.filenameField, getActivityView());
     }
 
+    /**
+     * Gets the full filename stored on disk.
+     * @param version File extension version to use.
+     * @return Full filename used on disk.
+     */
     @NonNull
-    private String getOldFilename() {
-        EditText fn = findViewById(R.id.filenameField);
-        return fn.getText().toString() + EXTENSION_V2;
+    private String getExtendedFilename(int version) {
+        String extension = EXTENSION_V3;
+        switch (version) {
+            case V2: {
+                extension = EXTENSION_V2;
+                break;
+            }
+            case V3: {
+                extension = EXTENSION_V3;
+                break;
+            }
+        }
+        return getFilename() + extension;
     }
 
-    @NonNull
-    private char[] getPassword() {
-        EditText pd = findViewById(R.id.passwordField);
-        int length = pd.length();
-        char[] ret = new char[length];
-        pd.getText().getChars(0, length, ret, 0);
-        return ret;
-    }
-
+    /**
+     * Gets the root file directory for the app.
+     * @return File pointing to the root files directory.
+     */
     @NonNull
     private File getRoot() {
         File root = new File(this.getFilesDir(), "PManager");
@@ -374,20 +357,31 @@ public class MainActivity extends AppCompatActivity {
         return root;
     }
 
+    /**
+     * Creates a File in the out variable. If the file is v2, automatically translates it to v3
+     * @return array containing the filename and password as char[].
+     * @throws Exception Exception from the decryption process.
+     */
     private char[][] setupOpenFile() throws Exception {
-        String filename = getFilename();
-        char[] password = getPassword();
+        String oldFilename = getExtendedFilename(V2);
+        String filename = getExtendedFilename(V3);
+        char[] password = getFieldChars(R.id.passwordField, getActivityView());
         out = new File(getRoot(), filename);
         if (!out.exists()) {
-            File old = new File(getRoot(), getOldFilename());
+            File old = new File(getRoot(), oldFilename);
             if (old.exists()) {
-                Util.translateV2toV3(old, out, password, getOldFilename(), filename);
+                if (!PMFile.translateV2toV3(old, out, password, oldFilename, filename)) {
+                    toast("Error converting v2 file!", this);
+                }
             }
         }
 
         return new char[][]{filename.toCharArray(), password};
     }
 
+    /**
+     * Resets the filename and password fields
+     */
     private void resetFields() {
         EditText fn = findViewById(R.id.filenameField);
         EditText pd = findViewById(R.id.passwordField);
@@ -395,27 +389,20 @@ public class MainActivity extends AppCompatActivity {
         pd.getText().clear();
     }
 
+    /**
+     * Makes a toast on the given context
+     * @param text Text to toast
+     * @param context Context for the source app
+     */
     public static void toast(String text, Context context) {
         Toast.makeText(context, text, Toast.LENGTH_LONG).show();
     }
 
-    public static ArrayList<PasswordEntry> parseData(byte[] data) {
-        ArrayList<PasswordEntry> entries = new ArrayList<>();
-        String decrypted = new String(data);
-
-        String[] dataList = decrypted.split(System.lineSeparator());
-        String[] entry = new String[3];
-        int i = 0;
-        int check1 = (dataList.length-1) / 3;
-        while(i < check1) {
-            int check0 = i * 3 + 1;
-            System.arraycopy(dataList, check0, entry, 0, 3);
-            i++;
-            entries.add(new PasswordEntry(entry[0], entry[1], entry[2], i));
-        }
-        return entries;
-    }
-
+    /**
+     * TODO: Remove for release
+     * Unused test function for creating an example v2 file to test conversion
+     * @param view view for the onclick function from a button.
+     */
     public void createTestOldFile(View view) {
         File file = new File(getRoot(), "test.jpweds");
         File file2 = new File(getRoot(), "test.pm3");
@@ -448,5 +435,12 @@ public class MainActivity extends AppCompatActivity {
             e1.printStackTrace();
         }
     }
-}
 
+    /**
+     * Gets this activity's content view
+     * @return View for this activity
+     */
+    private View getActivityView() {
+        return getWindow().getDecorView();
+    }
+}
