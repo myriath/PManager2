@@ -1,9 +1,10 @@
 package com.example.mitch.pmanager.objects;
 
-import static com.example.mitch.pmanager.Constants.V3;
+import static com.example.mitch.pmanager.Constants.Version.V3;
 import static com.example.mitch.pmanager.Util.bytesToChars;
 import static com.example.mitch.pmanager.Util.splitByChar;
 
+import com.example.mitch.pmanager.Constants;
 import com.example.mitch.pmanager.background.AES;
 import com.example.mitch.pmanager.background.Encryptor;
 import com.example.mitch.pmanager.exceptions.DecryptionException;
@@ -29,7 +30,7 @@ public class PMFile implements Serializable {
      * File version for future-proofing
      * @serial
      */
-    private final int version;
+    private final Constants.Version version;
     /**
      * Password entries arraylist for the stored data
      * @serial
@@ -41,7 +42,7 @@ public class PMFile implements Serializable {
      * @param version Version for this file
      * @param entries Password entries
      */
-    public PMFile(int version, ArrayList<PasswordEntry> entries) {
+    public PMFile(Constants.Version version, ArrayList<PasswordEntry> entries) {
         this.version = version;
         this.passwordEntries = entries;
     }
@@ -50,7 +51,7 @@ public class PMFile implements Serializable {
      * Getter for the version
      * @return version number
      */
-    public int getVersion() {
+    public Constants.Version getVersion() {
         return version;
     }
 

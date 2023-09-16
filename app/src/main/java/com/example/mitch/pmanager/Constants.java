@@ -5,21 +5,21 @@ package com.example.mitch.pmanager;
  */
 public class Constants {
     /**
-     * Constant for signifying version 2
+     * Version enum for storing versions and extensions
      */
-    public static final int V2 = 2;
-    /**
-     * Constant for signifying version 3
-     */
-    public static final int V3 = 3;
-    /**
-     * Version 2 file extension
-     */
-    public static final String EXTENSION_V2 = ".jpweds";
-    /**
-     * Version 3 file extension
-     */
-    public static final String EXTENSION_V3 = ".pm3";
+    public enum Version {
+        /**
+         * Used in case of no extension
+         */
+        NULL(""),
+        V2(".jpweds"),
+        V3(".pm3");
+
+        public final String ext;
+        Version(String ext) {
+            this.ext = ext;
+        }
+    }
 
     /**
      * File data intent constant

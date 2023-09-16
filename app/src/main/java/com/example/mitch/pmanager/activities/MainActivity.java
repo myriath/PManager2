@@ -1,13 +1,11 @@
 package com.example.mitch.pmanager.activities;
 
-import static com.example.mitch.pmanager.Constants.EXTENSION_V2;
-import static com.example.mitch.pmanager.Constants.EXTENSION_V3;
 import static com.example.mitch.pmanager.Constants.STATE_FILE;
 import static com.example.mitch.pmanager.Constants.STATE_FILEDATA;
 import static com.example.mitch.pmanager.Constants.STATE_FILENAME;
 import static com.example.mitch.pmanager.Constants.STATE_PASSWORD;
-import static com.example.mitch.pmanager.Constants.V2;
-import static com.example.mitch.pmanager.Constants.V3;
+import static com.example.mitch.pmanager.Constants.Version.V2;
+import static com.example.mitch.pmanager.Constants.Version.V3;
 import static com.example.mitch.pmanager.Util.charsToBytes;
 import static com.example.mitch.pmanager.Util.getFieldChars;
 import static com.example.mitch.pmanager.Util.getFieldString;
@@ -30,6 +28,7 @@ import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.example.mitch.pmanager.Constants;
 import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.Util;
 import com.example.mitch.pmanager.background.AES;
@@ -137,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
                     PMFile.readFile(filename, pwd, out);
                     if (out.delete()) {
                         String plainName = out.getName().split("\\.")[0];
-                        new File(getRoot(), plainName + EXTENSION_V2).delete();
+                        new File(getRoot(), plainName + V2.ext).delete();
                         toast("File Deleted", self);
                     } else {
                         toast("Warning: File not Deleted!", self);
@@ -247,11 +246,11 @@ public class MainActivity extends AppCompatActivity {
      * @param view For button onClick()
      */
     public void importFile(View view) {
-        String filename = getExtendedFilename(V3);
+        String filename = getFilename(V3);
 
         File source = new File(inPath + filename);
         if (!source.exists()) {
-            filename = getExtendedFilename(V3);
+            filename = getFilename(V3);
             source = new File(inPath + filename);
         }
 
@@ -269,7 +268,7 @@ public class MainActivity extends AppCompatActivity {
      * @param view For button onClick()
      */
     public void exportFile(View view) {
-        String file = getExtendedFilename(V3);
+        String file = getFilename(V3);
 
         File source = new File(getRoot(), file);
         File destination = new File(outPath + file);
@@ -295,10 +294,9 @@ public class MainActivity extends AppCompatActivity {
             if (out.exists()) {
                 message = "Opened!";
             } else {
-                new PMFile(3, new ArrayList<>()).writeFile(filename, password, out);
+                new PMFile(V3, new ArrayList<>()).writeFile(filename, password, out);
                 message = "New File Created!";
             }
-            toast(message, this);
 
             Intent intent = new Intent(this, MainScreenActivity.class);
             intent.putExtra(STATE_FILE, out);
@@ -306,6 +304,7 @@ public class MainActivity extends AppCompatActivity {
             intent.putExtra(STATE_PASSWORD, password);
             intent.putExtra(STATE_FILEDATA, PMFile.readFile(filename, password, out));
 
+            toast(message, this);
             startActivity(intent);
         } catch (Exception e1) {
             toast("Wrong Password!", this);
@@ -314,32 +313,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Gets the raw filename without any extensions.
-     * @return Raw filename.
-     */
-    private String getFilename() {
-        return getFieldString(R.id.filenameField, getActivityView());
-    }
-
-    /**
      * Gets the full filename stored on disk.
      * @param version File extension version to use.
      * @return Full filename used on disk.
      */
     @NonNull
-    private String getExtendedFilename(int version) {
-        String extension = EXTENSION_V3;
-        switch (version) {
-            case V2: {
-                extension = EXTENSION_V2;
-                break;
-            }
-            case V3: {
-                extension = EXTENSION_V3;
-                break;
-            }
-        }
-        return getFilename() + extension;
+    private String getFilename(Constants.Version version) {
+        return getFieldString(R.id.filenameField, getActivityView()) + version.ext;
     }
 
     /**
@@ -363,8 +343,8 @@ public class MainActivity extends AppCompatActivity {
      * @throws Exception Exception from the decryption process.
      */
     private char[][] setupOpenFile() throws Exception {
-        String oldFilename = getExtendedFilename(V2);
-        String filename = getExtendedFilename(V3);
+        String oldFilename = getFilename(V2);
+        String filename = getFilename(V3);
         char[] password = getFieldChars(R.id.passwordField, getActivityView());
         out = new File(getRoot(), filename);
         if (!out.exists()) {
