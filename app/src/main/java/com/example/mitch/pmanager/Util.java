@@ -69,6 +69,7 @@ public class Util {
 
     /**
      * Splits a char[] into a char[][] by the given splitter char
+     * Mimics the String.split() command but with a single character regex
      * @param toSplit char[] to split
      * @param splitter char to split toSplit by
      * @return char[][]
@@ -76,7 +77,11 @@ public class Util {
     public static char[][] splitByChar(char[] toSplit, char splitter) {
         int i;
         int terms = 0;
-        char[][] temp = new char[toSplit.length][];
+
+        // Create array with max possible term count
+        char[][] temp = new char[toSplit.length + 1][];
+
+        // Create term arrays for each term with the proper length
         int last = 0;
         for (i = 0; i < toSplit.length; i++) {
             if (toSplit[i] == splitter) {
@@ -85,6 +90,8 @@ public class Util {
             }
         }
         temp[terms++] = new char[i - last];
+
+        // Copy each term into the correct place
         int term = 0;
         i = 0;
         for (char c : toSplit) {
@@ -95,8 +102,17 @@ public class Util {
             }
             temp[term][i++] = c;
         }
-        char[][] ret = new char[terms][];
-        System.arraycopy(temp, 0, ret, 0, terms);
+
+        // Remove trailing empty terms
+        int termsExcludeTrailing = terms;
+        for (i = terms - 1; i > -1; i--) {
+            if (temp[i] != null && temp[i].length != 0) break;
+            else termsExcludeTrailing--;
+        }
+
+        // Reshape the temp array to the correct size
+        char[][] ret = new char[termsExcludeTrailing][];
+        System.arraycopy(temp, 0, ret, 0, termsExcludeTrailing);
         return ret;
     }
 
