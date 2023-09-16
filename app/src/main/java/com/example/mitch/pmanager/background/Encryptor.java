@@ -1,21 +1,20 @@
 package com.example.mitch.pmanager.background;
 
-import javax.crypto.Cipher;
-import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.PBEKeySpec;
-import javax.crypto.spec.SecretKeySpec;
-
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * @author mitch
@@ -53,6 +52,10 @@ public class Encryptor {
      * Algorithm string for the AES encryption
      */
     private static final String AES_GCM_NOPADDING = "AES/GCM/NoPadding";
+    /**
+     * Algorithm string for final key type
+     */
+    private static final String AES = "AES";
 
     /**
      * Generates a secret key given a password and salt.
@@ -75,7 +78,7 @@ public class Encryptor {
         } catch (InvalidKeySpecException e) {
             throw new RuntimeException("Error creating secret");
         }
-        return new SecretKeySpec(tmp.getEncoded(), "AES");
+        return new SecretKeySpec(tmp.getEncoded(), AES);
     }
 
     /**

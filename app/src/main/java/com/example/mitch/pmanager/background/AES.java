@@ -33,6 +33,15 @@ public class AES {
     private final SecretKeySpec key;
 
     /**
+     * Algorithm string for key type
+     */
+    private static final String ALG_STRING = "AES";
+    /**
+     * Algorithm string for encryption cipher
+     */
+    private static final String CIPHER_STRING = "AES/CBC/PKCS5Padding";
+
+    /**
      * Constructor
      * @param keyString password to create a key from
      * @throws NoSuchPaddingException Thrown if padding errors occur
@@ -40,8 +49,8 @@ public class AES {
      */
     public AES(String keyString) throws NoSuchPaddingException, NoSuchAlgorithmException {
         byte[] keyBytes = keyString.getBytes(StandardCharsets.UTF_8);
-        key = new SecretKeySpec(keyBytes, "AES");
-        cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        key = new SecretKeySpec(keyBytes, ALG_STRING);
+        cipher = Cipher.getInstance(CIPHER_STRING);
     }
 
     /**

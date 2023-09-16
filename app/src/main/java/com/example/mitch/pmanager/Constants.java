@@ -11,7 +11,7 @@ public class Constants {
         /**
          * Used in case of no extension
          */
-        NULL(""),
+        //NULL(""),
         V2(".jpweds"),
         V3(".pm3");
 
@@ -22,19 +22,17 @@ public class Constants {
     }
 
     /**
-     * File data intent constant
+     * Intent key string constants
      */
-    public static final String STATE_FILEDATA = "filedata";
-    /**
-     * File name intent constant
-     */
-    public static final String STATE_FILENAME = "filename";
-    /**
-     * Password intent constant
-     */
-    public static final String STATE_PASSWORD = "password";
-    /**
-     * File intent constant
-     */
-    public static final String STATE_FILE = "file";
+    public enum IntentKeys {
+        FILEDATA("filedata"),
+        FILENAME("filename"),
+        PASSWORD("password"),
+        FILE("file");
+
+        public final String key;
+        IntentKeys(String key) {
+            this.key = key;
+        }
+    }
 }

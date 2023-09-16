@@ -1,11 +1,12 @@
 package com.example.mitch.pmanager.activities;
 
-import static com.example.mitch.pmanager.Constants.STATE_FILE;
-import static com.example.mitch.pmanager.Constants.STATE_FILEDATA;
-import static com.example.mitch.pmanager.Constants.STATE_FILENAME;
-import static com.example.mitch.pmanager.Constants.STATE_PASSWORD;
+import static com.example.mitch.pmanager.Constants.IntentKeys.FILE;
+import static com.example.mitch.pmanager.Constants.IntentKeys.FILEDATA;
+import static com.example.mitch.pmanager.Constants.IntentKeys.FILENAME;
+import static com.example.mitch.pmanager.Constants.IntentKeys.PASSWORD;
 import static com.example.mitch.pmanager.Util.getFieldChars;
 import static com.example.mitch.pmanager.Util.getFieldString;
+import static com.example.mitch.pmanager.activities.MainActivity.toast;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
@@ -23,7 +24,6 @@ import android.widget.RadioButton;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.objects.PMFile;
@@ -56,13 +56,13 @@ public class MainScreenActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Bundle bd = getIntent().getExtras();
         if (bd != null) {
-            file = (File) bd.get(STATE_FILE);
-            filename = bd.getByteArray(STATE_FILENAME);
-            password = bd.getCharArray(STATE_PASSWORD);
+            file = (File) bd.get(FILE.key);
+            filename = bd.getByteArray(FILENAME.key);
+            password = bd.getCharArray(PASSWORD.key);
             if (savedInstanceState == null) {
-                pmFile = (PMFile) bd.getSerializable(STATE_FILEDATA);
+                pmFile = (PMFile) bd.getSerializable(FILEDATA.key);
             } else {
-                pmFile = (PMFile) savedInstanceState.getSerializable(STATE_FILEDATA);
+                pmFile = (PMFile) savedInstanceState.getSerializable(FILEDATA.key);
             }
         }
         if (pmFile != null) {
@@ -91,7 +91,7 @@ public class MainScreenActivity extends AppCompatActivity {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putSerializable(STATE_FILEDATA, pmFile);
+        outState.putSerializable(FILEDATA.key, pmFile);
     }
 
     private void rebuildTable() {
@@ -153,12 +153,12 @@ public class MainScreenActivity extends AppCompatActivity {
 
     public void addButton(View view) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Add Entry");
+        builder.setTitle(R.string.add_entry);
         @SuppressLint("InflateParams")
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_add, null);
         final Context self = this;
         builder.setView(dialogLayout);
-        builder.setPositiveButton("OK", (dialogInterface, i) -> {
+        builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
             char[] domain = getFieldChars(R.id.dialog_domain, dialogLayout);
             char[] username = getFieldChars(R.id.dialog_username, dialogLayout);
             char[] password = getFieldChars(R.id.dialog_password, dialogLayout);
@@ -173,11 +173,11 @@ public class MainScreenActivity extends AppCompatActivity {
                 createTable(tl, entry);
             }
 
-            MainActivity.toast("Added", self);
+            toast(R.string.added, self);
             pmFile.writeFile(filename, this.password, file);
         });
 
-        builder.setNegativeButton("CANCEL", (dialogInterface, i) -> MainActivity.toast("Cancelled", self));
+        builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(R.string.cancelled, self));
 
         AlertDialog dialog = builder.create();
         dialog.show();
@@ -185,12 +185,12 @@ public class MainScreenActivity extends AppCompatActivity {
 
     public void deleteButton(View view) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Delete Entry");
+        builder.setTitle(R.string.delete_entry);
         @SuppressLint("InflateParams")
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_delete_entry, null);
         final Context self = this;
         builder.setView(dialogLayout);
-        builder.setPositiveButton("OK", (dialogInterface, i) -> {
+        builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
             int id = Integer.parseInt(getFieldString(R.id.dialog_index, dialogLayout));
             ArrayList<PasswordEntry> temp = new ArrayList<>();
             TableLayout tl = findViewById(R.id.tableLayout);
@@ -209,11 +209,11 @@ public class MainScreenActivity extends AppCompatActivity {
             }
             fileData = temp;
 
-            MainActivity.toast("Deleted", self);
+            toast(R.string.deleted, self);
             pmFile.writeFile(filename, password, file);
         });
 
-        builder.setNegativeButton("CANCEL", (dialogInterface, i) -> MainActivity.toast("Cancelled", self));
+        builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(R.string.cancelled, self));
 
         AlertDialog dialog = builder.create();
         dialog.show();
@@ -221,13 +221,13 @@ public class MainScreenActivity extends AppCompatActivity {
 
     public void filterButton(View view) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Filter");
-        builder.setMessage("Filter by domain, username, and password");
+        builder.setTitle(R.string.filter);
+        builder.setMessage(R.string.filter_msg);
         @SuppressLint("InflateParams")
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_filter, null);
         final Context self = this;
         builder.setView(dialogLayout);
-        builder.setPositiveButton("OK", (dialogInterface, i) -> {
+        builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
             String filter = getFieldString(R.id.dialog_filter, dialogLayout).toLowerCase();
             TableLayout tl = findViewById(R.id.tableLayout);
             clearTable();
@@ -256,10 +256,10 @@ public class MainScreenActivity extends AppCompatActivity {
                 }
             }
 
-            MainActivity.toast("Filtered", self);
+            toast(R.string.filtered, self);
         });
 
-        builder.setNegativeButton("CANCEL", (dialogInterface, i) -> MainActivity.toast("Cancelled", self));
+        builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(R.string.cancelled, self));
 
         AlertDialog dialog = builder.create();
         dialog.show();
@@ -267,12 +267,12 @@ public class MainScreenActivity extends AppCompatActivity {
 
     public void copyButton(View view) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Copy");
+        builder.setTitle(R.string.copy);
         @SuppressLint("InflateParams")
         final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_copy, null);
         final Context self = this;
         builder.setView(dialogLayout);
-        builder.setPositiveButton("Ok", (dialogInterface, i) -> {
+        builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
             EditText ct = dialogLayout.findViewById(R.id.dialog_copy_index);
 
             RadioButton copyUsername = dialogLayout.findViewById(R.id.username);
@@ -285,7 +285,7 @@ public class MainScreenActivity extends AppCompatActivity {
             }
         });
 
-        builder.setNegativeButton("Cancel", (dialogInterface, i) -> MainActivity.toast("Cancelled", self));
+        builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(R.string.cancelled, self));
 
         AlertDialog dialog = builder.create();
         dialog.show();
@@ -300,10 +300,10 @@ public class MainScreenActivity extends AppCompatActivity {
                 ClipData clip;
                 if (function == 0) {
                     clip = ClipData.newPlainText("username", CharBuffer.wrap(entry.username));
-                    MainActivity.toast("Copied Username #" + copy, self);
+                    toast(getString(R.string.copied_username) + copy, self);
                 } else {
                     clip = ClipData.newPlainText("password", CharBuffer.wrap(entry.password));
-                    MainActivity.toast("Copied Password #" + copy, self);
+                    toast(getString(R.string.copied_password) + copy, self);
                 }
 
                 if (clipboard != null) {
@@ -320,8 +320,7 @@ public class MainScreenActivity extends AppCompatActivity {
         for (PasswordEntry entry : fileData) {
             createTable(tl, entry);
         }
-        Toast.makeText(this, "Filter Reset",
-                Toast.LENGTH_LONG).show();
+        toast(R.string.filter_reset, this);
     }
 
     private void createTable(TableLayout tl, PasswordEntry entry) {

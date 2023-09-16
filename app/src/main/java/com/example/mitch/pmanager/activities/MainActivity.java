@@ -1,9 +1,9 @@
 package com.example.mitch.pmanager.activities;
 
-import static com.example.mitch.pmanager.Constants.STATE_FILE;
-import static com.example.mitch.pmanager.Constants.STATE_FILEDATA;
-import static com.example.mitch.pmanager.Constants.STATE_FILENAME;
-import static com.example.mitch.pmanager.Constants.STATE_PASSWORD;
+import static com.example.mitch.pmanager.Constants.IntentKeys.FILE;
+import static com.example.mitch.pmanager.Constants.IntentKeys.FILEDATA;
+import static com.example.mitch.pmanager.Constants.IntentKeys.FILENAME;
+import static com.example.mitch.pmanager.Constants.IntentKeys.PASSWORD;
 import static com.example.mitch.pmanager.Constants.Version.V2;
 import static com.example.mitch.pmanager.Constants.Version.V3;
 import static com.example.mitch.pmanager.Util.charsToBytes;
@@ -60,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (grantResults.length <= 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-            toast("Please Allow", this);
+            toast(getString(R.string.perm_please_allow), this);
             finish();
         } else {
             if (requestCode == REQUEST_READ_STORAGE) {
@@ -125,34 +125,34 @@ public class MainActivity extends AppCompatActivity {
             PMFile.readFile(filename, strs[1], out);
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setTitle("Are you sure?");
-            builder.setMessage("Re-Enter Password");
+            builder.setTitle(R.string.are_you_sure);
+            builder.setMessage(R.string.re_enter_password);
             @SuppressLint("InflateParams")
             final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_delete_file, null);
             builder.setView(dialogLayout);
-            builder.setPositiveButton("OK", (dialogInterface, i) -> {
+            builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
                 char[] pwd = getFieldChars(R.id.dialog_new_password, dialogLayout);
                 try {
                     PMFile.readFile(filename, pwd, out);
                     if (out.delete()) {
                         String plainName = out.getName().split("\\.")[0];
                         new File(getRoot(), plainName + V2.ext).delete();
-                        toast("File Deleted", self);
+                        toast(getString(R.string.file_deleted), self);
                     } else {
-                        toast("Warning: File not Deleted!", self);
+                        toast(getString(R.string.warning_file_not_deleted), self);
                     }
                 } catch (Exception e1) {
-                    toast("Wrong Password!", self);
+                    toast(getString(R.string.wrong_password), self);
                 }
             });
 
-            builder.setNegativeButton("CANCEL", (dialogInterface, i) -> toast("Cancelled", self));
+            builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(getString(R.string.cancelled), self));
 
             AlertDialog dialog = builder.create();
             dialog.show();
             resetFields();
         } catch (Exception e1) {
-            toast("Wrong Password!", this);
+            toast(R.string.wrong_password, this);
         }
     }
 
@@ -168,26 +168,26 @@ public class MainActivity extends AppCompatActivity {
             final PMFile pmFile = PMFile.readFile(filename, strs[1], out);
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setTitle("Change Password");
+            builder.setTitle(R.string.change_password);
             @SuppressLint("InflateParams")
             final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_change_password, null);
             builder.setView(dialogLayout);
-            builder.setPositiveButton("OK", (dialogInterface, i) -> {
+            builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
                 char[] pwd = getFieldChars(R.id.dialog_new_password, dialogLayout);
                 try {
                     pmFile.writeFile(filename, pwd, out);
                 } catch (Exception e1) {
-                    toast("Wrong Password!", self);
+                    toast(R.string.wrong_password, self);
                 }
             });
 
-            builder.setNegativeButton("CANCEL", (dialogInterface, i) -> toast("Cancelled", self));
+            builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(R.string.cancelled, self));
 
             AlertDialog dialog = builder.create();
             dialog.show();
             resetFields();
         } catch (Exception e1) {
-            toast("Wrong Password!", this);
+            toast(R.string.wrong_password, this);
         }
     }
 
@@ -250,7 +250,7 @@ public class MainActivity extends AppCompatActivity {
 
         File source = new File(inPath + filename);
         if (!source.exists()) {
-            filename = getFilename(V3);
+            filename = getFilename(V2);
             source = new File(inPath + filename);
         }
 
@@ -299,10 +299,10 @@ public class MainActivity extends AppCompatActivity {
             }
 
             Intent intent = new Intent(this, MainScreenActivity.class);
-            intent.putExtra(STATE_FILE, out);
-            intent.putExtra(STATE_FILENAME, filename);
-            intent.putExtra(STATE_PASSWORD, password);
-            intent.putExtra(STATE_FILEDATA, PMFile.readFile(filename, password, out));
+            intent.putExtra(FILE.key, out);
+            intent.putExtra(FILENAME.key, filename);
+            intent.putExtra(PASSWORD.key, password);
+            intent.putExtra(FILEDATA.key, PMFile.readFile(filename, password, out));
 
             toast(message, this);
             startActivity(intent);
@@ -371,6 +371,15 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Makes a toast on the given context
+     * @param stringId R string id to display
+     * @param context Context for the source app
+     */
+    public static void toast(int stringId, Context context) {
+        Toast.makeText(context, stringId, Toast.LENGTH_LONG).show();
+    }
+
+    /**
+     * Makes a toast on the given context
      * @param text Text to toast
      * @param context Context for the source app
      */
@@ -396,6 +405,9 @@ public class MainActivity extends AppCompatActivity {
             dat.add(String.format("Username%d", i));
             dat.add(String.format("Password%d", i));
         }
+        dat.add("TestEmpty");
+        dat.add("");
+        dat.add("");
         StringBuilder sb = new StringBuilder();
         for (String str : dat) {
             sb.append(str);
@@ -407,11 +419,9 @@ public class MainActivity extends AppCompatActivity {
             if (!f.decrypt(file).split(System.lineSeparator())[0].equals("test.jpweds")) {
                 createTestOldFile(view);
             }
-            Toast.makeText(this, "Saved",
-                    Toast.LENGTH_LONG).show();
+            toast(R.string.saved, this);
         } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException e1) {
-            Toast.makeText(this, "Warning: File not Saved!",
-                    Toast.LENGTH_LONG).show();
+            toast(R.string.warning_file_not_saved, this);
             e1.printStackTrace();
         }
     }
