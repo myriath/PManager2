@@ -6,6 +6,7 @@ import android.view.View;
 import android.widget.EditText;
 
 import com.example.mitch.pmanager.background.Encryptor;
+import com.example.mitch.pmanager.interfaces.Writable;
 import com.example.mitch.pmanager.objects.PMFile;
 import com.example.mitch.pmanager.objects.PasswordEntry;
 import com.example.mitch.pmanager.objects.storage.PasswordBank;
@@ -158,15 +159,16 @@ public class Util {
 
     /**
      * Writes an encrypted file.
-     * @param o Object to write to the file
-     * @param file File to write to
+     *
+     * @param writable       Object to write to the file
+     * @param file           File to write to
      * @param associatedData Associated Data for the encryption
-     * @param pwd Password for the encryption
+     * @param pwd            Password for the encryption
      * @return True if writing succeeds, false if it failed.
      */
-    public static boolean writeFile(Object o, File file, byte[] associatedData, char[] pwd) {
+    public static boolean writeFile(Writable writable, File file, byte[] associatedData, char[] pwd) {
         try (ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream oos = new ObjectOutputStream(bos)) {
-            oos.writeObject(o);
+            oos.writeObject(writable);
             oos.flush();
             Encryptor.EncryptedData encrypted = Encryptor.encrypt(bos.toByteArray(), associatedData, pwd);
             Encryptor.writeEncrypted(encrypted, file);
@@ -191,6 +193,7 @@ public class Util {
             Object read = ois.readObject();
             if (read.getClass() == PMFile.class) {
                 ((PMFile) read).setFile(file);
+                // TODO: Implement passwordbank
 //                return PMFileToBank((PMFile) read);
             }
             return (PMFile) read;

@@ -35,7 +35,6 @@ import com.example.mitch.pmanager.background.AES;
 import com.example.mitch.pmanager.exceptions.DirectoryException;
 import com.example.mitch.pmanager.objects.PMFile;
 import com.example.mitch.pmanager.objects.Perm;
-import com.example.mitch.pmanager.objects.storage.PasswordBank;
 
 import java.io.File;
 import java.security.InvalidKeyException;
@@ -295,7 +294,8 @@ public class MainActivity extends AppCompatActivity {
             if (out.exists()) {
                 message = "Opened!";
             } else {
-                writeFile(new PasswordBank(), out, filename, password);
+//                writeFile(new PasswordBank(), out, filename, password);
+                writeFile(new PMFile(V3, new ArrayList<>(), out), out, filename, password);
                 message = "New File Created!";
             }
 

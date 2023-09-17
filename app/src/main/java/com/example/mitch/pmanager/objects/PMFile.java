@@ -1,21 +1,14 @@
 package com.example.mitch.pmanager.objects;
 
-import static com.example.mitch.pmanager.Constants.Version.V3;
-import static com.example.mitch.pmanager.Util.bytesToChars;
 import static com.example.mitch.pmanager.Util.parseV2Data;
-import static com.example.mitch.pmanager.Util.splitByChar;
 import static com.example.mitch.pmanager.Util.writeFile;
 
 import com.example.mitch.pmanager.Constants;
 import com.example.mitch.pmanager.background.AES;
-import com.example.mitch.pmanager.background.Encryptor;
 import com.example.mitch.pmanager.exceptions.DecryptionException;
+import com.example.mitch.pmanager.interfaces.Writable;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
@@ -27,13 +20,14 @@ import javax.crypto.NoSuchPaddingException;
 /**
  * Data class represents a saved file
  */
-public class PMFile implements Serializable {
+public class PMFile implements Serializable, Writable {
     /**
      * File to write the encrypted data to
      */
     private File file;
     /**
      * File version for future-proofing
+     *
      * @serial
      */
     private final Constants.Version version;

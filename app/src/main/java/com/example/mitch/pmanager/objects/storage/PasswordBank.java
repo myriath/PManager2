@@ -1,5 +1,7 @@
 package com.example.mitch.pmanager.objects.storage;
 
+import com.example.mitch.pmanager.interfaces.Writable;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -8,7 +10,7 @@ import java.util.HashMap;
  * PasswordBank class for new file storage schema
  * New storage allows multiple entries per domain
  */
-public class PasswordBank implements Serializable {
+public class PasswordBank implements Serializable, Writable {
     /**
      * Hashmap of data to store
      */

@@ -58,7 +58,7 @@ public class MainScreenActivity extends AppCompatActivity {
      * Enum for sorting methods
      */
     private enum Sorts {
-        NULL, INDEX, DOMAIN, USERNAME, PASSWORD;
+        NULL, INDEX, DOMAIN, USERNAME, PASSWORD
     }
 
     /**
