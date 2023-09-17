@@ -142,9 +142,9 @@ public class MainScreenActivity extends AppCompatActivity {
             ascendingSort = !ascendingSort;
         } else {
             ascendingSort = true;
+            previousSort = sortFunction;
         }
 
-        previousSort = sortFunction;
         fileData.sort((entry0, entry1) -> {
             Integer temp = null;
             char[] c0;
@@ -353,10 +353,10 @@ public class MainScreenActivity extends AppCompatActivity {
                 ClipData clip;
                 if (function == 0) {
                     clip = ClipData.newPlainText("username", CharBuffer.wrap(entry.username));
-                    toast(getString(R.string.copied_username) + copy, self);
+                    toast(getString(R.string.copied_username, copy), self);
                 } else {
                     clip = ClipData.newPlainText("password", CharBuffer.wrap(entry.password));
-                    toast(getString(R.string.copied_password) + copy, self);
+                    toast(getString(R.string.copied_password, copy), self);
                 }
 
                 if (clipboard != null) {
