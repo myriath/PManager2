@@ -1,6 +1,5 @@
 package com.example.mitch.pmanager.activities;
 
-import static com.example.mitch.pmanager.Constants.IntentKeys.FILE;
 import static com.example.mitch.pmanager.Constants.IntentKeys.FILEDATA;
 import static com.example.mitch.pmanager.Constants.IntentKeys.FILENAME;
 import static com.example.mitch.pmanager.Constants.IntentKeys.PASSWORD;
@@ -175,7 +174,7 @@ public class MainActivity extends AppCompatActivity {
             builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
                 char[] pwd = getFieldChars(R.id.dialog_new_password, dialogLayout);
                 try {
-                    pmFile.writeFile(filename, pwd, out);
+                    pmFile.writeFile(filename, pwd);
                 } catch (Exception e1) {
                     toast(R.string.wrong_password, self);
                 }
@@ -294,12 +293,11 @@ public class MainActivity extends AppCompatActivity {
             if (out.exists()) {
                 message = "Opened!";
             } else {
-                new PMFile(V3, new ArrayList<>()).writeFile(filename, password, out);
+                new PMFile(V3, new ArrayList<>(), out).writeFile(filename, password);
                 message = "New File Created!";
             }
 
             Intent intent = new Intent(this, MainScreenActivity.class);
-            intent.putExtra(FILE.key, out);
             intent.putExtra(FILENAME.key, filename);
             intent.putExtra(PASSWORD.key, password);
             intent.putExtra(FILEDATA.key, PMFile.readFile(filename, password, out));
@@ -343,14 +341,13 @@ public class MainActivity extends AppCompatActivity {
      * @throws Exception Exception from the decryption process.
      */
     private char[][] setupOpenFile() throws Exception {
-        String oldFilename = getFilename(V2);
         String filename = getFilename(V3);
         char[] password = getFieldChars(R.id.passwordField, getActivityView());
         out = new File(getRoot(), filename);
         if (!out.exists()) {
-            File old = new File(getRoot(), oldFilename);
+            File old = new File(getRoot(), getFilename(V2));
             if (old.exists()) {
-                if (!PMFile.translateV2toV3(old, out, password, oldFilename, filename)) {
+                if (!PMFile.translateV2toV3(old, out, password)) {
                     toast("Error converting v2 file!", this);
                 }
             }

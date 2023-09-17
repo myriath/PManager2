@@ -1,6 +1,5 @@
 package com.example.mitch.pmanager.activities;
 
-import static com.example.mitch.pmanager.Constants.IntentKeys.FILE;
 import static com.example.mitch.pmanager.Constants.IntentKeys.FILEDATA;
 import static com.example.mitch.pmanager.Constants.IntentKeys.FILENAME;
 import static com.example.mitch.pmanager.Constants.IntentKeys.PASSWORD;
@@ -29,24 +28,45 @@ import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.objects.PMFile;
 import com.example.mitch.pmanager.objects.PasswordEntry;
 
-import java.io.File;
 import java.nio.CharBuffer;
 import java.util.ArrayList;
 import java.util.Locale;
 
+/**
+ * Activity for the main screen
+ */
 public class MainScreenActivity extends AppCompatActivity {
-
-    File file;
+    /**
+     * Filename used as associated data for encryption
+     */
     byte[] filename;
+    /**
+     * Password for encryption
+     */
     char[] password;
+    /**
+     * PMFile containing the file data
+     */
     PMFile pmFile;
+    /**
+     * Reference to the file data array in pmFile
+     */
     ArrayList<PasswordEntry> fileData;
-    private static final int SORT_INDEX = 0;
-    private static final int SORT_DOMAIN = 1;
-    private static final int SORT_USERNAME = 2;
-    private static final int SORT_PASSWORD = 3;
 
-    private int previousSort = -1;
+    /**
+     * Enum for sorting methods
+     */
+    private enum Sorts {
+        NULL, INDEX, DOMAIN, USERNAME, PASSWORD;
+    }
+
+    /**
+     * Last-used sort method
+     */
+    private Sorts previousSort = Sorts.NULL;
+    /**
+     * Sort direction boolean
+     */
     private boolean ascendingSort = true;
 
     @Override
@@ -56,7 +76,6 @@ public class MainScreenActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Bundle bd = getIntent().getExtras();
         if (bd != null) {
-            file = (File) bd.get(FILE.key);
             filename = bd.getByteArray(FILENAME.key);
             password = bd.getCharArray(PASSWORD.key);
             if (savedInstanceState == null) {
@@ -94,6 +113,9 @@ public class MainScreenActivity extends AppCompatActivity {
         outState.putSerializable(FILEDATA.key, pmFile);
     }
 
+    /**
+     * Rebuilds the table for the password display
+     */
     private void rebuildTable() {
         TableLayout tl = findViewById(R.id.tableLayout);
         clearTable();
@@ -102,12 +124,19 @@ public class MainScreenActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Resets the sorting methods
+     */
     public void resetSorting() {
-        previousSort = -1;
+        previousSort = Sorts.NULL;
         ascendingSort = true;
     }
 
-    private void sort(int sortFunction) {
+    /**
+     * Sorts the table with the given method
+     * @param sortFunction Sort method to use
+     */
+    private void sort(Sorts sortFunction) {
         if (previousSort == sortFunction) {
             ascendingSort = !ascendingSort;
         } else {
@@ -120,22 +149,23 @@ public class MainScreenActivity extends AppCompatActivity {
             char[] c0;
             char[] c1;
             switch (sortFunction) {
-                case SORT_INDEX: {
+                case INDEX: {
                     temp = Integer.compare(entry0.index, entry1.index);
                     c0 = new char[0];
                     c1 = new char[0];
                     break;
                 }
-                case SORT_DOMAIN: {
+                case DOMAIN: {
                     c0 = entry0.domain;
                     c1 = entry1.domain;
                     break;
                 }
-                case SORT_USERNAME: {
+                case USERNAME: {
                     c0 = entry0.username;
                     c1 = entry1.username;
                     break;
                 }
+                case PASSWORD:
                 default: {
                     c0 = entry0.password;
                     c1 = entry1.password;
@@ -151,6 +181,10 @@ public class MainScreenActivity extends AppCompatActivity {
         rebuildTable();
     }
 
+    /**
+     * Button to add a new password entry
+     * @param view View for onClick()
+     */
     public void addButton(View view) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(R.string.add_entry);
@@ -174,7 +208,7 @@ public class MainScreenActivity extends AppCompatActivity {
             }
 
             toast(R.string.added, self);
-            pmFile.writeFile(filename, this.password, file);
+            pmFile.writeFile(filename, this.password);
         });
 
         builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(R.string.cancelled, self));
@@ -183,6 +217,10 @@ public class MainScreenActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    /**
+     * Deletes an entry
+     * @param view view for onClick()
+     */
     public void deleteButton(View view) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(R.string.delete_entry);
@@ -210,7 +248,7 @@ public class MainScreenActivity extends AppCompatActivity {
             fileData = temp;
 
             toast(R.string.deleted, self);
-            pmFile.writeFile(filename, password, file);
+            pmFile.writeFile(filename, password);
         });
 
         builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(R.string.cancelled, self));
@@ -219,6 +257,10 @@ public class MainScreenActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    /**
+     * Filters the table
+     * @param view view for onClick()
+     */
     public void filterButton(View view) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(R.string.filter);
@@ -265,6 +307,10 @@ public class MainScreenActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    /**
+     * Copies a given value
+     * @param view view for onClick()
+     */
     public void copyButton(View view) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(R.string.copy);
@@ -291,6 +337,12 @@ public class MainScreenActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    /**
+     * Copies the desired data to the clipboard
+     * @param index Index of the entry to copy
+     * @param self Activity reference
+     * @param function Function for deciding the copy value
+     */
     private void copy(EditText index, Context self, int function) {
         int copy = Integer.parseInt(index.getText().toString());
         ClipboardManager clipboard = (ClipboardManager)
@@ -314,6 +366,10 @@ public class MainScreenActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Resets the filters
+     * @param view view for onClick()
+     */
     public void resetFilterButton(View view) {
         TableLayout tl = findViewById(R.id.tableLayout);
         clearTable();
@@ -323,6 +379,11 @@ public class MainScreenActivity extends AppCompatActivity {
         toast(R.string.filter_reset, this);
     }
 
+    /**
+     * Creates the table from the given entry
+     * @param tl Tablelayout to add rows to
+     * @param entry entry to get data from
+     */
     private void createTable(TableLayout tl, PasswordEntry entry) {
         TextView id = new TextView(this);
         id.setPadding(5, 5, 5, 5);
@@ -350,25 +411,28 @@ public class MainScreenActivity extends AppCompatActivity {
         tl.addView(tr);
     }
 
+    /**
+     * Clears the table
+     */
     private void clearTable() {
         TableLayout tl = findViewById(R.id.tableLayout);
         TableRow row1 = findViewById(R.id.row1);
         TextView id = new TextView(this);
         id.setPadding(5, 5, 5, 5);
         id.setBackgroundColor(Color.LTGRAY);
-        id.setOnClickListener(view -> sort(SORT_INDEX));
+        id.setOnClickListener(view -> sort(Sorts.INDEX));
         TextView dm = new TextView(this);
         dm.setBackgroundColor(Color.GRAY);
         dm.setPadding(5, 5, 5, 5);
-        dm.setOnClickListener(view -> sort(SORT_DOMAIN));
+        dm.setOnClickListener(view -> sort(Sorts.DOMAIN));
         TextView un = new TextView(this);
         un.setBackgroundColor(Color.LTGRAY);
         un.setPadding(5, 5, 5, 5);
-        un.setOnClickListener(view -> sort(SORT_USERNAME));
+        un.setOnClickListener(view -> sort(Sorts.USERNAME));
         TextView pw = new TextView(this);
         pw.setBackgroundColor(Color.GRAY);
         pw.setPadding(5, 5, 5, 5);
-        pw.setOnClickListener(view -> sort(SORT_PASSWORD));
+        pw.setOnClickListener(view -> sort(Sorts.PASSWORD));
         id.setText(R.string.table_index);
         dm.setText(R.string.table_domain);
         dm.setTextColor(Color.WHITE);

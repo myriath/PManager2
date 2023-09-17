@@ -27,8 +27,7 @@ public class Constants {
     public enum IntentKeys {
         FILEDATA("filedata"),
         FILENAME("filename"),
-        PASSWORD("password"),
-        FILE("file");
+        PASSWORD("password");
 
         public final String key;
         IntentKeys(String key) {

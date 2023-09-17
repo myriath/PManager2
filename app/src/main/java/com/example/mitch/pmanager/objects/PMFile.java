@@ -27,6 +27,10 @@ import javax.crypto.NoSuchPaddingException;
  */
 public class PMFile implements Serializable {
     /**
+     * File to write the encrypted data to
+     */
+    private transient File file;
+    /**
      * File version for future-proofing
      * @serial
      */
@@ -42,9 +46,18 @@ public class PMFile implements Serializable {
      * @param version Version for this file
      * @param entries Password entries
      */
-    public PMFile(Constants.Version version, ArrayList<PasswordEntry> entries) {
+    public PMFile(Constants.Version version, ArrayList<PasswordEntry> entries, File file) {
         this.version = version;
         this.passwordEntries = entries;
+        this.file = file;
+    }
+
+    /**
+     * Setter for the output file
+     * @param file File to write to
+     */
+    public void setFile(File file) {
+        this.file = file;
     }
 
     /**
@@ -75,9 +88,11 @@ public class PMFile implements Serializable {
         Encryptor.EncryptedData encrypted = Encryptor.readFromFile(file);
         byte[] data = Encryptor.decrypt(encrypted, associatedData, pwd);
         try (ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream ois = new ObjectInputStream(bis)) {
-            return (PMFile) ois.readObject();
+            PMFile pmFile = (PMFile) ois.readObject();
+            pmFile.setFile(file);
+            return pmFile;
         } catch (Exception e) {
-            return parseV2Data(data);
+            return parseV2Data(data, file);
         }
     }
 
@@ -85,10 +100,9 @@ public class PMFile implements Serializable {
      * Writes an encrypted file.
      * @param associatedData Associated Data for the encryption
      * @param pwd Password for the encryption
-     * @param file File to output to
      * @return True if writing succeeds, false if it failed.
      */
-    public boolean writeFile(byte[] associatedData, char[] pwd, File file) {
+    public boolean writeFile(byte[] associatedData, char[] pwd) {
         try (ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream oos = new ObjectOutputStream(bos)) {
             oos.writeObject(this);
             oos.flush();
@@ -105,7 +119,7 @@ public class PMFile implements Serializable {
      * @param data Data to parse
      * @return Processed PMFile for easy use in the program
      */
-    private static PMFile parseV2Data(byte[] data) {
+    private static PMFile parseV2Data(byte[] data, File file) {
         ArrayList<PasswordEntry> entries = new ArrayList<>();
         char[][] dataList = splitByChar(bytesToChars(data), '\n');
         int entryCount = (dataList.length - 1) / 3;
@@ -113,7 +127,7 @@ public class PMFile implements Serializable {
             int entryIndex = i * 3 + 1;
             entries.add(new PasswordEntry(dataList[entryIndex], dataList[entryIndex + 1], dataList[entryIndex + 2], i + 1));
         }
-        return new PMFile(V3, entries);
+        return new PMFile(V3, entries, file);
     }
 
     /**
@@ -121,12 +135,10 @@ public class PMFile implements Serializable {
      * @param in v2 file for input
      * @param out v3 file to output to
      * @param pwd password char[]
-     * @param oldFilename filename of the old v2 file
-     * @param filename filename of the new v3 file
      * @throws Exception Exception thrown by v3 encryption errors.
      * @return True if the translation succeeded, false if not.
      */
-    public static boolean translateV2toV3(File in, File out, char[] pwd, String oldFilename, String filename) throws Exception {
+    public static boolean translateV2toV3(File in, File out, char[] pwd) throws Exception {
         String data;
         try {
             String[] splitFile;
@@ -134,8 +146,8 @@ public class PMFile implements Serializable {
             data = decrypt.decrypt(in);
             splitFile = data.split(System.lineSeparator());
 
-            if (!splitFile[0].equals(oldFilename)) {
-                translateV2toV3(in, out, pwd, oldFilename, filename);
+            if (!splitFile[0].equals(in.getName())) {
+                translateV2toV3(in, out, pwd);
             }
         } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
             throw new DecryptionException("");
@@ -143,11 +155,12 @@ public class PMFile implements Serializable {
             throw new RuntimeException(e);
         }
 
+        String filename = out.getName();
         data = filename + data.substring(data.indexOf(System.lineSeparator()));
-        PMFile pmFile = parseV2Data(data.getBytes(StandardCharsets.UTF_8));
+        PMFile pmFile = parseV2Data(data.getBytes(StandardCharsets.UTF_8), out);
         byte[] ad = filename.getBytes(StandardCharsets.UTF_8);
 
-        return pmFile.writeFile(ad, pwd, out);
+        return pmFile.writeFile(ad, pwd);
     }
 
     private static final long serialVersionUID = 1L;
