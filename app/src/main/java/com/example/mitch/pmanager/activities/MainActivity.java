@@ -8,6 +8,7 @@ import static com.example.mitch.pmanager.Constants.Version.V3;
 import static com.example.mitch.pmanager.Util.charsToBytes;
 import static com.example.mitch.pmanager.Util.getFieldChars;
 import static com.example.mitch.pmanager.Util.getFieldString;
+import static com.example.mitch.pmanager.Util.writeFile;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -34,6 +35,7 @@ import com.example.mitch.pmanager.background.AES;
 import com.example.mitch.pmanager.exceptions.DirectoryException;
 import com.example.mitch.pmanager.objects.PMFile;
 import com.example.mitch.pmanager.objects.Perm;
+import com.example.mitch.pmanager.objects.storage.PasswordBank;
 
 import java.io.File;
 import java.security.InvalidKeyException;
@@ -121,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
             char[][] strs = setupOpenFile();
             final byte[] filename = charsToBytes(strs[0]);
 
-            PMFile.readFile(filename, strs[1], out);
+            Util.readFile(filename, strs[1], out);
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle(R.string.are_you_sure);
@@ -132,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
             builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
                 char[] pwd = getFieldChars(R.id.dialog_new_password, dialogLayout);
                 try {
-                    PMFile.readFile(filename, pwd, out);
+                    Util.readFile(filename, pwd, out);
                     if (out.delete()) {
                         String plainName = out.getName().split("\\.")[0];
                         new File(getRoot(), plainName + V2.ext).delete();
@@ -164,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             char[][] strs = setupOpenFile();
             final byte[] filename = charsToBytes(strs[0]);
-            final PMFile pmFile = PMFile.readFile(filename, strs[1], out);
+            final PMFile pmFile = Util.readFile(filename, strs[1], out);
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle(R.string.change_password);
@@ -174,7 +176,7 @@ public class MainActivity extends AppCompatActivity {
             builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
                 char[] pwd = getFieldChars(R.id.dialog_new_password, dialogLayout);
                 try {
-                    pmFile.writeFile(filename, pwd);
+                    writeFile(pmFile, pmFile.getFile(), filename, pwd);
                 } catch (Exception e1) {
                     toast(R.string.wrong_password, self);
                 }
@@ -293,14 +295,14 @@ public class MainActivity extends AppCompatActivity {
             if (out.exists()) {
                 message = "Opened!";
             } else {
-                new PMFile(V3, new ArrayList<>(), out).writeFile(filename, password);
+                writeFile(new PasswordBank(), out, filename, password);
                 message = "New File Created!";
             }
 
             Intent intent = new Intent(this, MainScreenActivity.class);
             intent.putExtra(FILENAME.key, filename);
             intent.putExtra(PASSWORD.key, password);
-            intent.putExtra(FILEDATA.key, PMFile.readFile(filename, password, out));
+            intent.putExtra(FILEDATA.key, Util.readFile(filename, password, out));
 
             toast(message, this);
             startActivity(intent);

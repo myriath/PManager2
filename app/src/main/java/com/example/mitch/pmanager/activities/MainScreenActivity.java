@@ -5,6 +5,7 @@ import static com.example.mitch.pmanager.Constants.IntentKeys.FILENAME;
 import static com.example.mitch.pmanager.Constants.IntentKeys.PASSWORD;
 import static com.example.mitch.pmanager.Util.getFieldChars;
 import static com.example.mitch.pmanager.Util.getFieldString;
+import static com.example.mitch.pmanager.Util.writeFile;
 import static com.example.mitch.pmanager.activities.MainActivity.toast;
 
 import android.annotation.SuppressLint;
@@ -208,7 +209,7 @@ public class MainScreenActivity extends AppCompatActivity {
             }
 
             toast(R.string.added, self);
-            pmFile.writeFile(filename, this.password);
+            writeFile(pmFile, pmFile.getFile(), filename, this.password);
         });
 
         builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(R.string.cancelled, self));
@@ -248,7 +249,7 @@ public class MainScreenActivity extends AppCompatActivity {
             fileData = temp;
 
             toast(R.string.deleted, self);
-            pmFile.writeFile(filename, password);
+            writeFile(pmFile, pmFile.getFile(), filename, password);
         });
 
         builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(R.string.cancelled, self));
