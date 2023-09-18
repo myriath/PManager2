@@ -129,6 +129,7 @@ public class MainScreenActivity extends AppCompatActivity {
      * Resets the sorting methods
      */
     public void resetSorting() {
+        sort(Sorts.INDEX);
         previousSort = Sorts.NULL;
         ascendingSort = true;
     }
@@ -231,22 +232,18 @@ public class MainScreenActivity extends AppCompatActivity {
         builder.setView(dialogLayout);
         builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
             int id = Integer.parseInt(getFieldString(R.id.dialog_index, dialogLayout));
-            ArrayList<PasswordEntry> temp = new ArrayList<>();
             TableLayout tl = findViewById(R.id.tableLayout);
 
             resetSorting();
 
             clearTable();
+            fileData.remove(id - 1);
             for (PasswordEntry entry : fileData) {
-                if (entry.index != id) {
-                    if (entry.index > id) {
-                        entry.index--;
-                    }
-                    createTable(tl, entry);
-                    temp.add(entry);
+                if (entry.index > id) {
+                    entry.index--;
                 }
+                createTable(tl, entry);
             }
-            fileData = temp;
 
             toast(R.string.deleted, self);
             writeFile(pmFile, pmFile.getFile(), filename, password);
