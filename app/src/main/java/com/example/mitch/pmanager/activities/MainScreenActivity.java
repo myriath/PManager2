@@ -232,8 +232,8 @@ public class MainScreenActivity extends AppCompatActivity {
         builder.setView(dialogLayout);
         builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
             int id = Integer.parseInt(getFieldString(R.id.dialog_index, dialogLayout));
+            if (id >= fileData.size() || id < 1) return;
             TableLayout tl = findViewById(R.id.tableLayout);
-
             resetSorting();
 
             clearTable();
