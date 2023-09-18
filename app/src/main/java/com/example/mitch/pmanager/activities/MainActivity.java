@@ -121,7 +121,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             char[][] strs = setupOpenFile();
             final byte[] filename = charsToBytes(strs[0]);
-            if (filename.length == 0) return;
+            if (filename.length < 5) return;
 
             Util.readFile(filename, strs[1], out);
 
@@ -166,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             char[][] strs = setupOpenFile();
             final byte[] filename = charsToBytes(strs[0]);
-            if (filename.length == 0) return;
+            if (filename.length < 5) return;
             final PMFile pmFile = Util.readFile(filename, strs[1], out);
 
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -290,7 +290,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             char[][] strs = setupOpenFile();
             byte[] filename = charsToBytes(strs[0]);
-            if (filename.length == 0) return;
+            if (filename.length < 5) return;
             char[] password = strs[1];
             resetFields();
             String message;
