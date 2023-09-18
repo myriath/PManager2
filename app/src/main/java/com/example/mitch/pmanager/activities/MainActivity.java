@@ -294,6 +294,7 @@ public class MainActivity extends AppCompatActivity {
             if (out.exists()) {
                 message = "Opened!";
             } else {
+                // TODO: implement passwordbank
 //                writeFile(new PasswordBank(), out, filename, password);
                 writeFile(new PMFile(V3, new ArrayList<>(), out), out, filename, password);
                 message = "New File Created!";

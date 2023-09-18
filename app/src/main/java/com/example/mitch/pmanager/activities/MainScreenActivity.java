@@ -58,13 +58,13 @@ public class MainScreenActivity extends AppCompatActivity {
      * Enum for sorting methods
      */
     private enum Sorts {
-        NULL, INDEX, DOMAIN, USERNAME, PASSWORD
+        NO_SORT, INDEX, DOMAIN, USERNAME, PASSWORD
     }
 
     /**
      * Last-used sort method
      */
-    private Sorts previousSort = Sorts.NULL;
+    private Sorts previousSort = Sorts.NO_SORT;
     /**
      * Sort direction boolean
      */
@@ -130,7 +130,7 @@ public class MainScreenActivity extends AppCompatActivity {
      */
     public void resetSorting() {
         sort(Sorts.INDEX);
-        previousSort = Sorts.NULL;
+        previousSort = Sorts.NO_SORT;
         ascendingSort = true;
     }
 
