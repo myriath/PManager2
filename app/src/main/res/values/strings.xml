@@ -4,4 +4,27 @@
     <string name="table_domain">Domain</string>
     <string name="table_username">Username</string>
     <string name="table_password">Password</string>
+    <string name="saved">Saved</string>
+    <string name="warning_file_not_saved">Warning: File not Saved!</string>
+    <string name="added">Added</string>
+    <string name="cancel">Cancel</string>
+    <string name="cancelled">Cancelled</string>
+    <string name="ok">OK</string>
+    <string name="deleted">Deleted</string>
+    <string name="filter">Filter</string>
+    <string name="filter_msg">Filter by domain, username, or password</string>
+    <string name="filtered">Filtered</string>
+    <string name="copy">Copy</string>
+    <string name="copied_username">Copied Username #%d</string>
+    <string name="copied_password">Copied Password #%d</string>
+    <string name="filter_reset">Filter Reset</string>
+    <string name="perm_please_allow">Please Allow</string>
+    <string name="file_deleted">File Deleted</string>
+    <string name="warning_file_not_deleted">Warning: File not Deleted!</string>
+    <string name="wrong_password">Wrong Password!</string>
+    <string name="are_you_sure">Are you sure?</string>
+    <string name="re_enter_password">Re-Enter Password</string>
+    <string name="change_password">Change Password</string>
+    <string name="add_entry">Add Entry</string>
+    <string name="delete_entry">Delete Entry</string>
 </resources>

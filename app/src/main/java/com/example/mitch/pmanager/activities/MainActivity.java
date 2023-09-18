@@ -1,10 +1,19 @@
 package com.example.mitch.pmanager.activities;
 
+import static com.example.mitch.pmanager.Constants.IntentKeys.FILEDATA;
+import static com.example.mitch.pmanager.Constants.IntentKeys.FILENAME;
+import static com.example.mitch.pmanager.Constants.IntentKeys.PASSWORD;
+import static com.example.mitch.pmanager.Constants.Version.V2;
+import static com.example.mitch.pmanager.Constants.Version.V3;
+import static com.example.mitch.pmanager.Util.charsToBytes;
+import static com.example.mitch.pmanager.Util.getFieldChars;
+import static com.example.mitch.pmanager.Util.getFieldString;
+import static com.example.mitch.pmanager.Util.writeFile;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -19,19 +28,15 @@ import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.example.mitch.pmanager.Constants;
 import com.example.mitch.pmanager.R;
+import com.example.mitch.pmanager.Util;
 import com.example.mitch.pmanager.background.AES;
-import com.example.mitch.pmanager.exceptions.DecryptionException;
 import com.example.mitch.pmanager.exceptions.DirectoryException;
-import com.example.mitch.pmanager.objects.PasswordEntry;
+import com.example.mitch.pmanager.objects.PMFile;
 import com.example.mitch.pmanager.objects.Perm;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -41,7 +46,6 @@ import javax.crypto.NoSuchPaddingException;
 public class MainActivity extends AppCompatActivity {
 
     File out;
-    ArrayList<PasswordEntry> fileData;
     public static final int REQUEST_WRITE_STORAGE = 0;
     public static final int REQUEST_READ_STORAGE = 1;
     public static final int EXIT = 2;
@@ -56,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (grantResults.length <= 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-            toast("Please Allow", this);
+            toast(getString(R.string.perm_please_allow), this);
             finish();
         } else {
             if (requestCode == REQUEST_READ_STORAGE) {
@@ -66,6 +70,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Checks a given permission.
+     * @param permission Permission to check for.
+     */
     private void checkPermission(Perm permission) {
         if (ContextCompat.checkSelfPermission(this, permission.permission)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -74,6 +82,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Checks we have permissions for the external and internal storage
+     */
     private void checkPerms() {
         Perm permA = new Perm(Manifest.permission.READ_EXTERNAL_STORAGE, REQUEST_READ_STORAGE);
         checkPermission(permA);
@@ -100,118 +111,92 @@ public class MainActivity extends AppCompatActivity {
         resetFields();
     }
 
+    /**
+     * Code to delete a file. Double checks via password to make sure the user wants to delete.
+     * Deletes both v2 and v3 files.
+     * @param view For button onClick()
+     */
     public void deleteFile(View view) {
-        String[] strs = setupOpenFile();
-        final String filename = strs[0];
         final Context self = this;
         try {
-            decryptFile(out, getPassword(), filename);
+            char[][] strs = setupOpenFile();
+            final byte[] filename = charsToBytes(strs[0]);
+            if (filename.length < 5) return;
+
+            Util.readFile(filename, strs[1], out);
+
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setTitle("Are you sure?");
-            builder.setMessage("Re-Enter Password");
+            builder.setTitle(R.string.are_you_sure);
+            builder.setMessage(R.string.re_enter_password);
             @SuppressLint("InflateParams")
             final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_delete_file, null);
             builder.setView(dialogLayout);
-            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    EditText pd = dialogLayout.findViewById(R.id.dialog_new_password);
-                    String pwd = pd.getText().toString();
-                    try {
-                        decryptFile(out, pwd, filename);
-                        if (out.delete()) {
-                            toast("File Deleted", self);
-                        } else {
-                            toast("Warning: File not Deleted!", self);
-                        }
-                    } catch (Exception e1) {
-                        toast("Wrong Password!", self);
+            builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
+                char[] pwd = getFieldChars(R.id.dialog_new_password, dialogLayout);
+                try {
+                    Util.readFile(filename, pwd, out);
+                    if (out.delete()) {
+                        String plainName = out.getName().split("\\.")[0];
+                        new File(getRoot(), plainName + V2.ext).delete();
+                        toast(getString(R.string.file_deleted), self);
+                    } else {
+                        toast(getString(R.string.warning_file_not_deleted), self);
                     }
+                } catch (Exception e1) {
+                    toast(getString(R.string.wrong_password), self);
                 }
             });
 
-            builder.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    toast("Cancelled", self);
-                }
-            });
+            builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(getString(R.string.cancelled), self));
 
             AlertDialog dialog = builder.create();
             dialog.show();
             resetFields();
         } catch (Exception e1) {
-            toast("Wrong Password!", this);
+            toast(R.string.wrong_password, this);
         }
     }
 
+    /**
+     * Code for changing the password of a specified file.
+     * @param view For button onClick()
+     */
     public void changePassword(View view) {
-        String[] strs = setupOpenFile();
-        final String filename = strs[0];
         final Context self = this;
         try {
-            decryptFile(out, getPassword(), filename);
+            char[][] strs = setupOpenFile();
+            final byte[] filename = charsToBytes(strs[0]);
+            if (filename.length < 5) return;
+            final PMFile pmFile = Util.readFile(filename, strs[1], out);
+
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setTitle("Change Password");
+            builder.setTitle(R.string.change_password);
             @SuppressLint("InflateParams")
             final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_change_password, null);
             builder.setView(dialogLayout);
-            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    EditText pd = dialogLayout.findViewById(R.id.dialog_new_password);
-                    String pwd = pd.getText().toString();
-                    try {
-                        updatePassword(filename, pwd, out);
-                    } catch (Exception e1) {
-                        toast("Wrong Password!", self);
-                    }
+            builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
+                char[] pwd = getFieldChars(R.id.dialog_new_password, dialogLayout);
+                try {
+                    writeFile(pmFile, pmFile.getFile(), filename, pwd);
+                } catch (Exception e1) {
+                    toast(R.string.wrong_password, self);
                 }
             });
 
-            builder.setNegativeButton("CANCEL", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    toast("Cancelled", self);
-                }
-            });
+            builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(R.string.cancelled, self));
 
             AlertDialog dialog = builder.create();
             dialog.show();
             resetFields();
         } catch (Exception e1) {
-            toast("Wrong Password!", this);
+            toast(R.string.wrong_password, this);
         }
     }
 
-    public void updatePassword(String filename, String newPassword, File file) {
-        ArrayList<String> dat = new ArrayList<>();
-        dat.add(filename);
-        for (PasswordEntry entry : fileData) {
-            dat.add(entry.domain);
-            dat.add(entry.username);
-            dat.add(entry.password);
-        }
-        StringBuilder sb = new StringBuilder();
-        for (String str : dat) {
-            sb.append(str);
-            sb.append('\0');
-        }
-        try {
-            AES f = new AES(AES.pad(newPassword));
-            f.encryptString(sb.toString(), file);
-            if (!f.decrypt(file).split(System.lineSeparator())[0].equals(filename)) {
-                updatePassword(filename, newPassword, file);
-            }
-            Toast.makeText(this, "Saved",
-                    Toast.LENGTH_LONG).show();
-        } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException e1) {
-            Toast.makeText(this, "Warning: File not Saved!",
-                    Toast.LENGTH_LONG).show();
-            e1.printStackTrace();
-        }
-    }
-
+    /**
+     * Creates the in/out folders
+     * @param view For button onClick()
+     */
     public void createDirs(View view) {
         File inDir = new File(inPath);
         File outDir = new File(outPath);
@@ -233,6 +218,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Deletes the in/out folders
+     * @param view For button onClick()
+     */
     public void deleteDirs(View view) {
         File inDir = new File(inPath);
         File outDir = new File(outPath);
@@ -254,99 +243,93 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Imports the file from the downloads in/out folder.
+     * @param view For button onClick()
+     */
     public void importFile(View view) {
-        String file = getFilename();
-        File input = new File(getRoot(), file);
-        String sourcePath = inPath + file;
-        String destinationPath = input.getAbsolutePath();
+        String filename = getFilename(V3);
 
-        File source = new File(sourcePath);
-        File destination = new File(destinationPath);
+        File source = new File(inPath + filename);
+        if (!source.exists()) {
+            filename = getFilename(V2);
+            source = new File(inPath + filename);
+        }
 
-        try {
-            InputStream in = new FileInputStream(source);
-            OutputStream out = new FileOutputStream(destination);
-            // Transfer bytes from in to out
-            byte[] buf = new byte[1024];
-            int len;
-            while ((len = in.read(buf)) > 0) {
-                out.write(buf, 0, len);
-            }
+        File destination = new File(getRoot(), filename);
+
+        if (Util.copyFile(source.toPath(), destination.toPath())) {
             toast("File imported", this);
-        } catch (IOException e) {
-            e.printStackTrace();
+        } else {
             toast("Warning: File not imported!", this);
         }
     }
 
+    /**
+     * Exports the file to the downloads in/out folder.
+     * @param view For button onClick()
+     */
     public void exportFile(View view) {
-        String file = getFilename();
-        File input = new File(getRoot(), file);
-        String sourcePath = input.getAbsolutePath();
-        String destinationPath = outPath + file;
+        String file = getFilename(V3);
 
-        File source = new File(sourcePath);
-        File destination = new File(destinationPath);
+        File source = new File(getRoot(), file);
+        File destination = new File(outPath + file);
 
-        try {
-            InputStream in = new FileInputStream(source);
-            OutputStream out = new FileOutputStream(destination);
-            // Transfer bytes from in to out
-            byte[] buf = new byte[1024];
-            int len;
-            while ((len = in.read(buf)) > 0) {
-                out.write(buf, 0, len);
-            }
+        if (Util.copyFile(source.toPath(), destination.toPath())) {
             toast("File Exported", this);
-        } catch (IOException e) {
-            e.printStackTrace();
+        } else {
             toast("Warning: File not Exported!", this);
         }
     }
 
+    /**
+     * Opens the file specified if valid credentials.
+     * @param view For button onClick()
+     */
     public void openFile(View view) {
-        String[] strs = setupOpenFile();
-        String filename = strs[0];
-        String password = strs[1];
-        resetFields();
         try {
+            char[][] strs = setupOpenFile();
+            byte[] filename = charsToBytes(strs[0]);
+            if (filename.length < 5) return;
+            char[] password = strs[1];
+            resetFields();
             String message;
             if (out.exists()) {
-                decryptFile(out, password, filename);
                 message = "Opened!";
             } else {
-                AES newFile = new AES(AES.pad(password));
-                newFile.encryptString(filename, out);
-                decryptFile(out, password, filename);
+                // TODO: implement passwordbank
+//                writeFile(new PasswordBank(), out, filename, password);
+                writeFile(new PMFile(V3, new ArrayList<>(), out), out, filename, password);
                 message = "New File Created!";
             }
-            toast(message, this);
-            fileData = read(password, out);
 
             Intent intent = new Intent(this, MainScreenActivity.class);
-            intent.putExtra("file", out);
-            intent.putExtra("filename", filename);
-            intent.putExtra("password", password);
-            intent.putExtra("filedata", fileData);
+            intent.putExtra(FILENAME.key, filename);
+            intent.putExtra(PASSWORD.key, password);
+            intent.putExtra(FILEDATA.key, Util.readFile(filename, password, out));
 
+            toast(message, this);
             startActivity(intent);
         } catch (Exception e1) {
             toast("Wrong Password!", this);
+            resetFields();
         }
     }
 
+    /**
+     * Gets the full filename stored on disk.
+     * @param version File extension version to use.
+     * @return Full filename used on disk.
+     */
     @NonNull
-    private String getFilename() {
-        EditText fn = findViewById(R.id.filenameField);
-        return fn.getText().toString() + ".jpweds";
+    private String getFilename(Constants.Version version) {
+        return getFieldString(R.id.filenameField, getActivityView()) + version.ext;
     }
 
-    @NonNull
-    private String getPassword() {
-        EditText pd = findViewById(R.id.passwordField);
-        return pd.getText().toString();
-    }
-
+    /**
+     * Gets the root file directory for the app.
+     * @return File pointing to the root files directory.
+     */
     @NonNull
     private File getRoot() {
         File root = new File(this.getFilesDir(), "PManager");
@@ -358,29 +341,30 @@ public class MainActivity extends AppCompatActivity {
         return root;
     }
 
-    private void decryptFile(File file, String pwd, String name) throws DecryptionException {
-        String data;
-        try {
-            String[] splitFile;
-            AES decrypt = new AES(AES.pad(pwd));
-            data = decrypt.decrypt(file);
-            splitFile = data.split(System.lineSeparator());
-
-            if (!splitFile[0].equals(name)) {
-                throw new DecryptionException("");
-            }
-        } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new DecryptionException("");
-        }
-    }
-
-    private String[] setupOpenFile() {
-        String filename = getFilename();
-        String password = getPassword();
+    /**
+     * Creates a File in the out variable. If the file is v2, automatically translates it to v3
+     * @return array containing the filename and password as char[].
+     * @throws Exception Exception from the decryption process.
+     */
+    private char[][] setupOpenFile() throws Exception {
+        String filename = getFilename(V3);
+        char[] password = getFieldChars(R.id.passwordField, getActivityView());
         out = new File(getRoot(), filename);
-        return new String[]{filename, password};
+        if (!out.exists()) {
+            File old = new File(getRoot(), getFilename(V2));
+            if (old.exists()) {
+                if (!PMFile.translateV2toV3(old, out, password)) {
+                    toast("Error converting v2 file!", this);
+                }
+            }
+        }
+
+        return new char[][]{filename.toCharArray(), password};
     }
 
+    /**
+     * Resets the filename and password fields
+     */
     private void resetFields() {
         EditText fn = findViewById(R.id.filenameField);
         EditText pd = findViewById(R.id.passwordField);
@@ -388,25 +372,68 @@ public class MainActivity extends AppCompatActivity {
         pd.getText().clear();
     }
 
+    /**
+     * Makes a toast on the given context
+     * @param stringId R string id to display
+     * @param context Context for the source app
+     */
+    public static void toast(int stringId, Context context) {
+        Toast.makeText(context, stringId, Toast.LENGTH_LONG).show();
+    }
+
+    /**
+     * Makes a toast on the given context
+     * @param text Text to toast
+     * @param context Context for the source app
+     */
     public static void toast(String text, Context context) {
         Toast.makeText(context, text, Toast.LENGTH_LONG).show();
     }
 
-    public static ArrayList<PasswordEntry> read(String key, File out) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
-        ArrayList<PasswordEntry> entries = new ArrayList<>();
-        AES aes = new AES(AES.pad(key));
-        String decrypted = aes.decrypt(out);
-        String[] dataList = decrypted.split(System.lineSeparator());
-        String[] entry = new String[3];
-        int i2 = 0;
-        int check1 = (dataList.length-1) / 3;
-        while(i2 < check1) {
-            int check0 = i2 * 3 + 1;
-            System.arraycopy(dataList, check0, entry, 0, 3);
-            i2++;
-            entries.add(new PasswordEntry(entry[0], entry[1], entry[2], i2));
+    /**
+     * TODO: Remove for release
+     * Unused test function for creating an example v2 file to test conversion
+     * @param view view for the onclick function from a button.
+     */
+    public void createTestOldFile(View view) {
+        File file = new File(getRoot(), "test.jpweds");
+        File file2 = new File(getRoot(), "test.pm3");
+        file.delete();
+        file2.delete();
+
+        ArrayList<String> dat = new ArrayList<>();
+        dat.add("test.jpweds");
+        for (int i = 0; i < 10; i++) {
+            dat.add(String.format("Domain%d", i));
+            dat.add(String.format("Username%d", i));
+            dat.add(String.format("Password%d", i));
         }
-        return entries;
+        dat.add("TestEmpty");
+        dat.add("");
+        dat.add("");
+        StringBuilder sb = new StringBuilder();
+        for (String str : dat) {
+            sb.append(str);
+            sb.append('\0');
+        }
+        try {
+            AES f = new AES(AES.pad("testpass"));
+            f.encryptString(sb.toString(), file);
+            if (!f.decrypt(file).split(System.lineSeparator())[0].equals("test.jpweds")) {
+                createTestOldFile(view);
+            }
+            toast(R.string.saved, this);
+        } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException e1) {
+            toast(R.string.warning_file_not_saved, this);
+            e1.printStackTrace();
+        }
+    }
+
+    /**
+     * Gets this activity's content view
+     * @return View for this activity
+     */
+    private View getActivityView() {
+        return getWindow().getDecorView();
     }
 }
-
