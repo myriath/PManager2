@@ -5,29 +5,27 @@
     android:layout_height="match_parent">
 
     <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/password"
+        android:id="@+id/filename"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
         android:layout_marginTop="16dp"
-        app:passwordToggleEnabled="true"
-        android:hint="@string/old_password">
+        android:hint="@string/filename">
 
         <com.google.android.material.textfield.TextInputEditText
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="textPassword" />
+            android:layout_height="wrap_content" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/newPassword"
+        android:id="@+id/password"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:layout_below="@id/password"
+        android:layout_below="@id/filename"
         app:passwordToggleEnabled="true"
-        android:hint="@string/new_password">
+        android:hint="@string/password">
 
         <com.google.android.material.textfield.TextInputEditText
             android:layout_width="match_parent"

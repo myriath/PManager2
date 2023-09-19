@@ -5,12 +5,15 @@ import static com.example.mitch.pmanager.Constants.Version.V3;
 import android.view.View;
 import android.widget.EditText;
 
+import androidx.annotation.NonNull;
+
 import com.example.mitch.pmanager.background.Encryptor;
 import com.example.mitch.pmanager.interfaces.Writable;
 import com.example.mitch.pmanager.objects.PMFile;
 import com.example.mitch.pmanager.objects.PasswordEntry;
 import com.example.mitch.pmanager.objects.storage.PasswordBank;
 import com.example.mitch.pmanager.objects.storage.UserEntry;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -27,15 +30,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Objects;
 
 /**
  * Utilities class for various functions used in multiple places.
  */
 public class Util {
+
+    public static Comparator<File> FILE_COMPARATOR = Comparator.comparing(File::getName);
+
     /**
      * Copies the file at source to dest in 1MB chunks
+     *
      * @param source Path to the source file
-     * @param dest Path to the destination file
+     * @param dest   Path to the destination file
      * @return True if the copy succeeded, false if it failed.
      */
     public static boolean copyFile(Path source, Path dest) {
@@ -43,28 +52,32 @@ public class Util {
                 InputStream in = Files.newInputStream(source);
                 OutputStream out = Files.newOutputStream(dest)
         ) {
-            // Transfer bytes from in to out
-            byte[] buf = new byte[1024];
-            int len;
-            while ((len = in.read(buf)) > 0) {
-                out.write(buf, 0, len);
-            }
-            return true;
+            return copyFile(in, out);
         } catch (IOException e) {
             e.printStackTrace();
             return false;
         }
     }
 
+    public static boolean copyFile(@NonNull InputStream in, @NonNull OutputStream out) throws IOException {
+        byte[] buf = new byte[1024];
+        int len;
+        while ((len = in.read(buf)) > 0) {
+            out.write(buf, 0, len);
+        }
+        return true;
+    }
+
     /**
      * Gets a string of the contents of a given EditText
+     *
      * @param viewId R id of the edit text to read
-     * @param view Source view to find the edit text in
+     * @param view   Source view to find the edit text in
      * @return String of the edit text's contents.
      */
     public static String getFieldString(int viewId, View view) {
-        EditText field = view.findViewById(viewId);
-        return field.getText().toString();
+        TextInputLayout field = view.findViewById(viewId);
+        return Objects.requireNonNull(field.getEditText()).getText().toString();
     }
 
     /**
@@ -75,10 +88,11 @@ public class Util {
      * @return char[] of the contents.
      */
     public static char[] getFieldChars(int viewId, View view) {
-        EditText field = view.findViewById(viewId);
-        int length = field.length();
+        TextInputLayout field = view.findViewById(viewId);
+        EditText editText = field.getEditText();
+        int length = Objects.requireNonNull(editText).length();
         char[] chars = new char[length];
-        field.getText().getChars(0, length, chars, 0);
+        Objects.requireNonNull(editText.getText()).getChars(0, length, chars, 0);
         return chars;
     }
 
@@ -158,6 +172,18 @@ public class Util {
     }
 
     /**
+     * Removes the extension from a given string
+     *
+     * @param str String to format
+     * @return Formatted string
+     */
+    public static String removeExtension(String str) {
+        int sub = str.lastIndexOf('.');
+        if (sub < 0) sub = str.length();
+        return str.substring(0, sub);
+    }
+
+    /**
      * Writes an encrypted file.
      *
      * @param writable       Object to write to the file
@@ -180,26 +206,25 @@ public class Util {
 
     /**
      * Decrypts and retrieves an object from a given file
+     *
      * @param associatedData Associated data for the decryption
-     * @param pwd Password for the decryption
-     * @param file File to decrypt
+     * @param pwd            Password for the decryption
+     * @param file           File to decrypt
      * @return Object of the data
      * @throws Exception Thrown if decryption fails.
      */
-    public static PMFile readFile(byte[] associatedData, char[] pwd, File file) throws Exception {
+    public static PasswordBank readFile(byte[] associatedData, char[] pwd, File file) throws Exception {
         Encryptor.EncryptedData encrypted = Encryptor.readFromFile(file);
         byte[] data = Encryptor.decrypt(encrypted, associatedData, pwd);
         try (ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream ois = new ObjectInputStream(bis)) {
             Object read = ois.readObject();
             if (read.getClass() == PMFile.class) {
                 ((PMFile) read).setFile(file);
-                // TODO: Implement passwordbank
-//                return PMFileToBank((PMFile) read);
+                return PMFileToBank((PMFile) read);
             }
-            return (PMFile) read;
+            return (PasswordBank) read;
         } catch (Exception e) {
-            return parseV2Data(data, file);
-//            return PMFileToBank(parseV2Data(data, file));
+            return PMFileToBank(parseV2Data(data, file));
         }
     }
 
@@ -228,11 +253,7 @@ public class Util {
         PasswordBank bank = new PasswordBank();
         for (PasswordEntry entry : file.getPasswordEntries()) {
             String domain = String.valueOf(entry.domain);
-            try {
-                bank.getEntries(domain);
-            } catch (Exception e) {
-                bank.createDomain(domain).add(new UserEntry(entry.username, entry.password));
-            }
+            bank.getEntry(domain).add(new UserEntry(entry.username, entry.password));
         }
         return bank;
     }

@@ -2,8 +2,10 @@ package com.example.mitch.pmanager;
 
 import static com.example.mitch.pmanager.Util.bytesToChars;
 import static com.example.mitch.pmanager.Util.charsToBytes;
+import static com.example.mitch.pmanager.Util.removeExtension;
 import static com.example.mitch.pmanager.Util.splitByChar;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
@@ -67,6 +69,7 @@ public class UtilTest {
 
     /**
      * Performs a single conversion test with a given test string
+     *
      * @param testString String to test
      */
     public void conversionSingleTest(String testString) {
@@ -74,5 +77,12 @@ public class UtilTest {
         byte[] bytesToCharsTest = testString.getBytes(StandardCharsets.UTF_8);
         assertArrayEquals(bytesToCharsTest, charsToBytes(charsToBytesTest));
         assertArrayEquals(charsToBytesTest, bytesToChars(bytesToCharsTest));
+    }
+
+    @Test
+    public void testExtensionRemoval() {
+        assertEquals("filename", removeExtension("filename.str"));
+        assertEquals("abc.def", removeExtension("abc.def.g"));
+        assertEquals("bill.cosby", removeExtension("bill.cosby.orgx"));
     }
 }

@@ -1,17 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".activities.MainActivity">
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/filesList"
+        android:id="@+id/entriesList"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:divider="@android:color/transparent"
-        android:visibility="visible" />
+        android:layout_height="match_parent" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -19,7 +16,7 @@
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/newButton"
-            android:contentDescription="@string/new_file"
+            android:contentDescription="@string/new_entry"
             android:src="@drawable/add"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -27,12 +24,12 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.5"
-            app:layout_constraintStart_toEndOf="@+id/importButton" />
+            app:layout_constraintStart_toEndOf="@+id/searchButton" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/importButton"
-            android:contentDescription="@string/import_file"
-            android:src="@drawable/import_file"
+            android:id="@+id/searchButton"
+            android:contentDescription="@string/search"
+            android:src="@drawable/search"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="@+id/newButton"
@@ -44,15 +41,15 @@
 
         <TextView
             android:visibility="gone"
-            android:id="@+id/importButtonText"
+            android:id="@+id/searchButtonText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:text="@string/import_file"
+            android:text="@string/search"
             android:textSize="16sp"
-            app:layout_constraintBottom_toTopOf="@+id/importButton"
-            app:layout_constraintEnd_toEndOf="@+id/importButton"
-            app:layout_constraintStart_toStartOf="@+id/importButton" />
+            app:layout_constraintBottom_toTopOf="@+id/searchButton"
+            app:layout_constraintEnd_toEndOf="@+id/searchButton"
+            app:layout_constraintStart_toStartOf="@+id/searchButton" />
 
         <TextView
             android:visibility="gone"
@@ -60,14 +57,13 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:text="@string/new_file"
+            android:text="@string/new_entry"
             android:textSize="16sp"
             app:layout_constraintBottom_toTopOf="@+id/newButton"
             app:layout_constraintEnd_toEndOf="@+id/newButton"
             app:layout_constraintStart_toStartOf="@+id/newButton" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
-
 
     <TextView
         android:id="@+id/emptyText"
@@ -77,6 +73,6 @@
         android:layout_centerVertical="true"
         android:layout_centerHorizontal="true"
         android:textSize="72sp"
-        android:text="@string/no_files" />
+        android:text="@string/no_entries" />
 
 </RelativeLayout>
