@@ -7,9 +7,9 @@ import static com.example.mitch.pmanager.Util.getFieldChars;
 import static com.example.mitch.pmanager.Util.getFieldString;
 import static com.example.mitch.pmanager.Util.readFile;
 import static com.example.mitch.pmanager.Util.writeFile;
-import static com.example.mitch.pmanager.activities.MainActivity.CALLBACK_FILE;
-import static com.example.mitch.pmanager.activities.MainActivity.ROOT_DIR;
-import static com.example.mitch.pmanager.activities.MainActivity.toast;
+import static com.example.mitch.pmanager.activities.LoginActivity.CALLBACK_FILE;
+import static com.example.mitch.pmanager.activities.LoginActivity.ROOT_DIR;
+import static com.example.mitch.pmanager.activities.LoginActivity.toast;
 
 import android.content.Context;
 import android.os.Bundle;
@@ -28,7 +28,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.Util;
-import com.example.mitch.pmanager.activities.MainActivity;
+import com.example.mitch.pmanager.activities.LoginActivity;
 import com.example.mitch.pmanager.interfaces.CallbackListener;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
@@ -269,7 +269,7 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
             final View dialogLayout = View.inflate(context, R.layout.dialog_password_only, null);
             MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(context)
                     .setView(dialogLayout)
-                    .setTitle(((MainActivity) callback).getString(R.string.delete_file, file.getName()))
+                    .setTitle(((LoginActivity) callback).getString(R.string.delete_file, file.getName()))
                     .setMessage(R.string.are_you_sure_this_cannot_be_undone)
                     .setPositiveButton(R.string.delete, (dialogInterface, i) -> {
                         char[] pwd = getFieldChars(R.id.password, dialogLayout);

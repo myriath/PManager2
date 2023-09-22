@@ -2,10 +2,20 @@ package com.example.mitch.pmanager;
 
 import static com.example.mitch.pmanager.Constants.Version.V3;
 
+import android.app.Activity;
+import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.EditText;
 
 import androidx.annotation.NonNull;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.example.mitch.pmanager.background.Encryptor;
 import com.example.mitch.pmanager.interfaces.Writable;
@@ -37,6 +47,8 @@ import java.util.Objects;
  * Utilities class for various functions used in multiple places.
  */
 public class Util {
+
+    public static int DP16;
 
     public static Comparator<File> FILE_COMPARATOR = Comparator.comparing(File::getName);
 
@@ -256,5 +268,35 @@ public class Util {
             bank.getEntry(domain).add(new UserEntry(entry.username, entry.password));
         }
         return bank;
+    }
+
+    public static void setStatusBarColors(Activity activity) {
+        setStatusBarColors(activity.getResources(), activity.getWindow());
+    }
+
+    public static void setStatusBarColors(Resources resources, Window window) {
+        int nightModeFlags =
+                resources.getConfiguration().uiMode &
+                        Configuration.UI_MODE_NIGHT_MASK;
+        boolean lightMode = nightModeFlags != Configuration.UI_MODE_NIGHT_YES;
+
+        WindowInsetsControllerCompat windowInsetsController =
+                WindowCompat.getInsetsController(window, window.getDecorView());
+
+        windowInsetsController.setAppearanceLightNavigationBars(lightMode);
+        windowInsetsController.setAppearanceLightStatusBars(lightMode);
+    }
+
+    public static void setWindowInsets(View view, int bottomMargin, int rightMargin, int leftMargin) {
+        ViewCompat.setOnApplyWindowInsetsListener(view, (v, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+            mlp.bottomMargin = insets.bottom + bottomMargin;
+            mlp.rightMargin = insets.right + rightMargin;
+            mlp.leftMargin = insets.left + leftMargin;
+            v.setLayoutParams(mlp);
+
+            return WindowInsetsCompat.CONSUMED;
+        });
     }
 }

@@ -43,4 +43,6 @@
     <string name="domain">Domain</string>
     <string name="create_domain">Add Domain</string>
     <string name="error_failed_to_save">Error: failed to save</string>
+    <string name="dummy_button">Dummy Button</string>
+    <string name="dummy_content">DUMMY\nCONTENT</string>
 </resources>

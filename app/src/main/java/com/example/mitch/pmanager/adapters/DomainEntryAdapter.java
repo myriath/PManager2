@@ -13,6 +13,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mitch.pmanager.R;
+import com.example.mitch.pmanager.activities.FileOpenActivity;
+import com.example.mitch.pmanager.dialogs.EditDomainDialog;
 import com.example.mitch.pmanager.objects.storage.DomainEntry;
 
 import java.util.ArrayList;
@@ -42,11 +44,17 @@ public class DomainEntryAdapter extends RecyclerView.Adapter<DomainEntryAdapter.
 
         // TODO: rethink edit process; needs to account for delete
 
+        if (entries.get(holder.getAdapterPosition()).getEntries().size() == 0) {
+            holder.moreButton.setVisibility(View.GONE);
+        }
+
         holder.passwordList.setVisibility(expanded == holder.getAdapterPosition() ? View.VISIBLE : View.GONE);
         holder.domainView.setText(entry.getDomain());
 
         holder.editButton.setOnClickListener(view -> {
-            // TODO: edit entries
+            EditDomainDialog dialog = new EditDomainDialog();
+            // TODO: change tag
+            dialog.show(((FileOpenActivity) context).getSupportFragmentManager(), "test");
         });
 
         holder.title.setOnClickListener(view -> {

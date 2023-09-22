@@ -11,12 +11,14 @@ import static com.example.mitch.pmanager.Util.copyFile;
 import static com.example.mitch.pmanager.Util.getFieldChars;
 import static com.example.mitch.pmanager.Util.getFieldString;
 import static com.example.mitch.pmanager.Util.readFile;
+import static com.example.mitch.pmanager.Util.setWindowInsets;
 import static com.example.mitch.pmanager.Util.writeFile;
 
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -26,12 +28,14 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.WindowCompat;
 import androidx.documentfile.provider.DocumentFile;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mitch.pmanager.Constants;
 import com.example.mitch.pmanager.R;
+import com.example.mitch.pmanager.Util;
 import com.example.mitch.pmanager.adapters.FilesAdapter;
 import com.example.mitch.pmanager.background.AES;
 import com.example.mitch.pmanager.interfaces.CallbackListener;
@@ -52,7 +56,7 @@ import java.util.Objects;
 
 import javax.crypto.NoSuchPaddingException;
 
-public class MainActivity extends AppCompatActivity implements CallbackListener {
+public class LoginActivity extends AppCompatActivity implements CallbackListener {
 
     public static File ROOT_DIR = null;
     public static final int EXIT = 2;
@@ -62,9 +66,14 @@ public class MainActivity extends AppCompatActivity implements CallbackListener 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        Util.setStatusBarColors(this);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        setContentView(R.layout.activity_main);
+
+        setContentView(R.layout.activity_login);
+        Util.DP16 = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, getResources().getDisplayMetrics());
 
         getRoot();
 
@@ -133,9 +142,11 @@ public class MainActivity extends AppCompatActivity implements CallbackListener 
                 }
         );
 
+        setWindowInsets(findViewById(R.id.buttonPanel), 0, 0, 0);
+
         findViewById(R.id.newButton).setOnClickListener((view) -> {
             final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_create_file, null);
-            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(MainActivity.this)
+            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(LoginActivity.this)
                     .setView(dialogLayout)
                     .setTitle(R.string.create_file)
                     .setPositiveButton(R.string.create, null)
@@ -280,7 +291,7 @@ public class MainActivity extends AppCompatActivity implements CallbackListener 
                         byte[] ad = file.getName().getBytes(StandardCharsets.UTF_8);
 
                         try {
-                            Intent intent = new Intent(this, MainScreenActivity.class);
+                            Intent intent = new Intent(this, FileOpenActivity.class);
                             intent.putExtra(FILE.key, file);
                             intent.putExtra(FILENAME.key, ad);
                             intent.putExtra(PASSWORD.key, pwd);

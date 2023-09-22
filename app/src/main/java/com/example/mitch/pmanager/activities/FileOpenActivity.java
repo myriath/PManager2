@@ -5,8 +5,9 @@ import static com.example.mitch.pmanager.Constants.IntentKeys.FILEDATA;
 import static com.example.mitch.pmanager.Constants.IntentKeys.FILENAME;
 import static com.example.mitch.pmanager.Constants.IntentKeys.PASSWORD;
 import static com.example.mitch.pmanager.Util.getFieldString;
+import static com.example.mitch.pmanager.Util.setWindowInsets;
 import static com.example.mitch.pmanager.Util.writeFile;
-import static com.example.mitch.pmanager.activities.MainActivity.toast;
+import static com.example.mitch.pmanager.activities.LoginActivity.toast;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -14,10 +15,12 @@ import android.view.View;
 import android.view.WindowManager;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.WindowCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mitch.pmanager.R;
+import com.example.mitch.pmanager.Util;
 import com.example.mitch.pmanager.adapters.DomainEntryAdapter;
 import com.example.mitch.pmanager.objects.storage.PasswordBank;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -27,7 +30,7 @@ import java.io.File;
 /**
  * Activity for the main screen
  */
-public class MainScreenActivity extends AppCompatActivity {
+public class FileOpenActivity extends AppCompatActivity {
     File file;
     /**
      * Filename used as associated data for encryption
@@ -61,8 +64,13 @@ public class MainScreenActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
-        setContentView(R.layout.activity_file);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        Util.setStatusBarColors(this);
+
+        setContentView(R.layout.activity_file_open);
+
         Bundle bd = getIntent().getExtras();
         if (bd != null) {
             file = (File) bd.getSerializable(FILE.key);
@@ -86,6 +94,8 @@ public class MainScreenActivity extends AppCompatActivity {
             findViewById(R.id.searchButtonText).setVisibility(View.VISIBLE);
             findViewById(R.id.emptyText).setVisibility(View.VISIBLE);
         }
+
+        setWindowInsets(findViewById(R.id.buttonPanel), 0, 0, 0);
 
         findViewById(R.id.searchButton).setOnClickListener(view -> {
             // TODO: Search
@@ -113,15 +123,15 @@ public class MainScreenActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == MainActivity.EXIT) {
-            setResult(MainActivity.EXIT);
+        if (resultCode == LoginActivity.EXIT) {
+            setResult(LoginActivity.EXIT);
             finish();
         }
     }
 
     @Override
     protected void onUserLeaveHint() {
-        setResult(MainActivity.EXIT);
+        setResult(LoginActivity.EXIT);
         finish();
     }
 
