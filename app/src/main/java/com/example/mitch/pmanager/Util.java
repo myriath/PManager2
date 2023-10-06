@@ -291,6 +291,7 @@ public class Util {
         ViewCompat.setOnApplyWindowInsetsListener(view, (v, windowInsets) -> {
             Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
             ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+            mlp.topMargin = insets.top;
             mlp.bottomMargin = insets.bottom + bottomMargin;
             mlp.rightMargin = insets.right + rightMargin;
             mlp.leftMargin = insets.left + leftMargin;

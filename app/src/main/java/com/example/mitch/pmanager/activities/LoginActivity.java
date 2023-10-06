@@ -143,6 +143,7 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
         );
 
         setWindowInsets(findViewById(R.id.buttonPanel), 0, 0, 0);
+        setWindowInsets(findViewById(R.id.filesList), 0, 0, 0);
 
         findViewById(R.id.newButton).setOnClickListener((view) -> {
             final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_create_file, null);
