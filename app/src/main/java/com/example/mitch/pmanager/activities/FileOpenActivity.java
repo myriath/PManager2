@@ -1,13 +1,13 @@
 package com.example.mitch.pmanager.activities;
 
 import static com.example.mitch.pmanager.activities.LoginActivity.toast;
-import static com.example.mitch.pmanager.util.ByteCharStringUtil.getFieldString;
 import static com.example.mitch.pmanager.util.Constants.DP16;
 import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILE;
 import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILEDATA;
 import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILENAME;
 import static com.example.mitch.pmanager.util.Constants.IntentKeys.PASSWORD;
 import static com.example.mitch.pmanager.util.FileUtil.writeFile;
+import static com.example.mitch.pmanager.util.WindowUtil.getFieldString;
 
 import android.os.Bundle;
 import android.view.View;
@@ -24,10 +24,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.adapters.DomainEntryAdapter;
+import com.example.mitch.pmanager.dialogs.CustomDialog;
 import com.example.mitch.pmanager.dialogs.EditDomainDialog;
-import com.example.mitch.pmanager.objects.storage.DomainEntry;
 import com.example.mitch.pmanager.objects.storage.PasswordBank;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.io.File;
 
@@ -102,13 +101,13 @@ public class FileOpenActivity extends AppCompatActivity {
         });
 
         findViewById(R.id.newButton).setOnClickListener(view -> {
-            final View dialogLayout = View.inflate(this, R.layout.dialog_create_domain, null);
-            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this)
-                    .setView(dialogLayout)
-                    .setTitle(R.string.create_domain)
-                    .setPositiveButton(R.string.create, (dialogInterface, i) -> {
+            CustomDialog customDialog = new CustomDialog(
+                    R.layout.dialog_create_domain,
+                    getString(R.string.create_domain),
+                    getString(R.string.create), getString(R.string.cancel),
+                    (dialogInterface, i, dialogView) -> {
                         int beforeCreationSize = bank.getEntries().size() - 1;
-                        bank.createDomain(getFieldString(R.id.domain, dialogLayout));
+                        bank.createDomain(getFieldString(R.id.domain, dialogView));
                         int afterCreationSize = bank.getEntries().size() - 1;
                         if (beforeCreationSize != afterCreationSize) {
                             adapter.notifyItemInserted(afterCreationSize);
@@ -120,10 +119,9 @@ public class FileOpenActivity extends AppCompatActivity {
                         save();
 
                         startEditDialog(this, afterCreationSize, adapter);
-                    })
-                    .setNegativeButton(R.string.cancel, (dialogInterface, i) -> dialogInterface.cancel());
-            builder.create();
-            builder.show();
+                    }, (dialogInterface, i, dialogView) -> dialogInterface.cancel()
+            );
+            customDialog.show(getSupportFragmentManager());
         });
     }
 
@@ -163,8 +161,7 @@ public class FileOpenActivity extends AppCompatActivity {
             context.save();
             adapter.notifyItemChanged(position);
         });
-        // TODO: change tag
-        dialog.show(context.getSupportFragmentManager(), "test");
+        dialog.show(context.getSupportFragmentManager());
     }
 
 }

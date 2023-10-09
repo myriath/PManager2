@@ -5,11 +5,13 @@
     <item
         android:id="@+id/newEntry"
         android:title="@string/new_entry"
+        android:icon="@drawable/add"
         app:showAsAction="ifRoom" />
 
     <item
         android:id="@+id/save"
         android:title="@string/save"
+        android:icon="@drawable/save"
         app:showAsAction="ifRoom" />
 
 </menu>

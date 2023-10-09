@@ -1,6 +1,6 @@
 package com.example.mitch.pmanager.adapters;
 
-import static com.example.mitch.pmanager.util.ByteCharStringUtil.getFieldChars;
+import static com.example.mitch.pmanager.util.WindowUtil.getFieldChars;
 
 import android.content.Context;
 import android.view.LayoutInflater;

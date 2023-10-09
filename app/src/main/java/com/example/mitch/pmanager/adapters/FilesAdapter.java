@@ -2,8 +2,6 @@ package com.example.mitch.pmanager.adapters;
 
 import static com.example.mitch.pmanager.activities.LoginActivity.ROOT_DIR;
 import static com.example.mitch.pmanager.activities.LoginActivity.toast;
-import static com.example.mitch.pmanager.util.ByteCharStringUtil.getFieldChars;
-import static com.example.mitch.pmanager.util.ByteCharStringUtil.getFieldString;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_CODE;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_FILE;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_PWD;
@@ -13,6 +11,8 @@ import static com.example.mitch.pmanager.util.Constants.CallbackCodes.LOAD_FILE;
 import static com.example.mitch.pmanager.util.Constants.Version.V3;
 import static com.example.mitch.pmanager.util.FileUtil.readFile;
 import static com.example.mitch.pmanager.util.FileUtil.writeFile;
+import static com.example.mitch.pmanager.util.WindowUtil.getFieldChars;
+import static com.example.mitch.pmanager.util.WindowUtil.getFieldString;
 
 import android.annotation.SuppressLint;
 import android.content.Context;

@@ -1,7 +1,5 @@
 package com.example.mitch.pmanager.activities;
 
-import static com.example.mitch.pmanager.util.ByteCharStringUtil.getFieldChars;
-import static com.example.mitch.pmanager.util.ByteCharStringUtil.getFieldString;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_CODE;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_FILE;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_PWD;
@@ -16,6 +14,8 @@ import static com.example.mitch.pmanager.util.FileUtil.copyFile;
 import static com.example.mitch.pmanager.util.FileUtil.readFile;
 import static com.example.mitch.pmanager.util.FileUtil.writeExternal;
 import static com.example.mitch.pmanager.util.FileUtil.writeFile;
+import static com.example.mitch.pmanager.util.WindowUtil.getFieldChars;
+import static com.example.mitch.pmanager.util.WindowUtil.getFieldString;
 
 import android.content.Context;
 import android.content.Intent;
@@ -28,7 +28,6 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -41,10 +40,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.adapters.FilesAdapter;
 import com.example.mitch.pmanager.background.AES;
+import com.example.mitch.pmanager.dialogs.CustomDialog;
 import com.example.mitch.pmanager.interfaces.CallbackListener;
 import com.example.mitch.pmanager.objects.storage.PasswordBank;
 import com.example.mitch.pmanager.util.Constants;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.File;
@@ -92,6 +91,8 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+//        setStatusBarColors(getResources(), getWindow());
 
         setContentView(R.layout.activity_login);
         DP16 = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, getResources().getDisplayMetrics());
@@ -173,43 +174,41 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
         );
 
         findViewById(R.id.newButton).setOnClickListener((view) -> {
-            final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_create_file, null);
-            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(LoginActivity.this)
-                    .setView(dialogLayout)
-                    .setTitle(R.string.create_file)
-                    .setPositiveButton(R.string.create, null)
-                    .setNegativeButton(R.string.cancel, (dialogInterface, i) -> dialogInterface.cancel());
-            final AlertDialog dialog = builder.create();
-            dialog.show();
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener((view1) -> {
-                String filename = getFieldString(R.id.filename, dialogLayout);
-                if (filename.length() == 0) {
-                    ((TextInputLayout) dialogLayout.findViewById(R.id.filename)).setError(getString(R.string.cannot_be_empty));
-                    return;
-                }
-                ((TextInputLayout) dialogLayout.findViewById(R.id.filename)).setError("");
-                if (getFieldChars(R.id.password, dialogLayout).length == 0) {
-                    ((TextInputLayout) dialogLayout.findViewById(R.id.password)).setError(getString(R.string.cannot_be_empty));
-                    return;
-                }
-                if (filesListAdapter.fileExists(filename)) {
-                    dialog.cancel();
-                    return;
-                }
-                File file = new File(ROOT_DIR, filename + V3.ext);
-                if (!writeFile(
-                        new PasswordBank(),
-                        file,
-                        file.getName().getBytes(StandardCharsets.UTF_8),
-                        getFieldChars(R.id.password, dialogLayout)
-                )) {
-                    dialog.cancel();
-                    return;
-                }
-                filesListAdapter.add(file);
-                checkEmptyText(filesListAdapter);
-                dialog.dismiss();
-            });
+            CustomDialog customDialog = new CustomDialog(
+                    R.layout.dialog_create_file,
+                    getString(R.string.create_file),
+                    getString(R.string.create), getString(R.string.cancel),
+                    (dialogInterface, i, dialogLayout) -> {
+                        String filename = getFieldString(R.id.filename, dialogLayout);
+                        if (filename.length() == 0) {
+                            ((TextInputLayout) dialogLayout.findViewById(R.id.filename)).setError(getString(R.string.cannot_be_empty));
+                            return;
+                        }
+                        ((TextInputLayout) dialogLayout.findViewById(R.id.filename)).setError("");
+                        if (getFieldChars(R.id.password, dialogLayout).length == 0) {
+                            ((TextInputLayout) dialogLayout.findViewById(R.id.password)).setError(getString(R.string.cannot_be_empty));
+                            return;
+                        }
+                        if (filesListAdapter.fileExists(filename)) {
+                            dialogInterface.cancel();
+                            return;
+                        }
+                        File file = new File(ROOT_DIR, filename + V3.ext);
+                        if (!writeFile(
+                                new PasswordBank(),
+                                file,
+                                file.getName().getBytes(StandardCharsets.UTF_8),
+                                getFieldChars(R.id.password, dialogLayout)
+                        )) {
+                            dialogInterface.cancel();
+                            return;
+                        }
+                        filesListAdapter.add(file);
+                        checkEmptyText(filesListAdapter);
+                        dialogInterface.dismiss();
+                    }, (dialogInterface, i, dialogLayout) -> dialogInterface.cancel()
+            );
+            customDialog.show(getSupportFragmentManager());
         });
 
         findViewById(R.id.importButton).setOnClickListener((view) -> importFileLauncher.launch(new String[]{"application/octet-stream"}));
@@ -275,13 +274,12 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
                 return;
             }
 
-            final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_password_only, null);
-            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this)
-                    .setView(dialogLayout)
-                    .setTitle(R.string.open_file)
-                    .setMessage(file.getName())
-                    .setPositiveButton(R.string.open, (dialogInterface, i) -> {
-                        char[] pwd = getFieldChars(R.id.password, dialogLayout);
+            CustomDialog customDialog = new CustomDialog(
+                    R.layout.dialog_password_only,
+                    getString(R.string.open_file), file.getName(),
+                    getString(R.string.open), getString(R.string.cancel),
+                    (dialogInterface, i, dialogView) -> {
+                        char[] pwd = getFieldChars(R.id.password, dialogView);
                         byte[] ad = file.getName().getBytes(StandardCharsets.UTF_8);
 
                         try {
@@ -297,10 +295,9 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
                             toast("Incorrect password", this);
                         }
                         dialogInterface.dismiss();
-                    })
-                    .setNegativeButton(R.string.cancel, (dialogInterface, i) -> dialogInterface.cancel());
-            builder.create();
-            builder.show();
+                    }, (dialogInterface, i, dialogView) -> dialogInterface.cancel()
+            );
+            customDialog.show(getSupportFragmentManager());
         } else if (Objects.requireNonNull(code) == Constants.CallbackCodes.DELETE_FILE) {
             checkEmptyText(filesListAdapter);
         } else if (Objects.requireNonNull(code) == Constants.CallbackCodes.EXPORT_FILE) {

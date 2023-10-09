@@ -2,8 +2,12 @@
 
     <!-- Base application theme. -->
     <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="android:windowTranslucentNavigation">true</item>
-        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">?android:isLightTheme</item>
+        <item name="android:windowLightNavigationBar">?android:isLightTheme</item>
+        <!--        <item name="android:enforceStatusBarContrast">true</item>-->
+        <!--        <item name="android:enforceNavigationBarContrast">true</item>-->
 
         <item name="actionButtonStyle">@android:style/Widget.ActionButton</item>
 
@@ -14,8 +18,10 @@
     </style>
 
     <style name="AppTheme.FullScreenDialog" parent="Theme.Material3.DayNight.Dialog">
-        <item name="android:windowTranslucentNavigation">true</item>
-        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">?android:isLightTheme</item>
+        <item name="android:windowLightNavigationBar">?android:isLightTheme</item>
         <item name="colorPrimary">?android:attr/colorBackground</item>
         <item name="android:windowIsFloating">false</item>
         <item name="android:windowBackground">?android:attr/colorBackground</item>
@@ -26,8 +32,8 @@
     </style>
 
     <style name="Widget.AppTheme.ButtonBar.Fullscreen" parent="">
-        <item name="android:background">@color/black_overlay</item>
-        <item name="android:buttonBarStyle">?android:attr/buttonBarStyle</item>
+        <!--        <item name="android:background">@color/black_overlay</item>-->
+        <!--        <item name="android:buttonBarStyle">?android:attr/buttonBarStyle</item>-->
     </style>
 
 </resources>

@@ -11,6 +11,7 @@ import android.widget.ListView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.FragmentManager;
 
 import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.adapters.UserEntryEditAdapter;
@@ -21,8 +22,9 @@ import com.google.android.material.appbar.MaterialToolbar;
 
 public class EditDomainDialog extends DialogFragment {
 
-    private final ViewHolder viewHolder;
+    public static final String DIALOG_TAG = "PManager.EditDomainDialog";
 
+    private final ViewHolder viewHolder;
     private final DomainEntry entry;
     private final CallbackListener callbackListener;
     private DomainEntry tempEntries;
@@ -36,6 +38,10 @@ public class EditDomainDialog extends DialogFragment {
     private static class ViewHolder {
         MaterialToolbar toolbar;
         ListView entriesList;
+    }
+
+    public void show(@NonNull FragmentManager manager) {
+        super.show(manager, DIALOG_TAG);
     }
 
     @Override
