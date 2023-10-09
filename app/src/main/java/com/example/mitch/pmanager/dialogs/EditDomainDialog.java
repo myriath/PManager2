@@ -6,18 +6,37 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.widget.ListView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 
 import com.example.mitch.pmanager.R;
-import com.example.mitch.pmanager.Util;
+import com.example.mitch.pmanager.adapters.UserEntryEditAdapter;
+import com.example.mitch.pmanager.interfaces.CallbackListener;
+import com.example.mitch.pmanager.objects.storage.DomainEntry;
+import com.example.mitch.pmanager.objects.storage.UserEntry;
 import com.google.android.material.appbar.MaterialToolbar;
 
 public class EditDomainDialog extends DialogFragment {
 
-    private MaterialToolbar toolbar;
+    private final ViewHolder viewHolder;
+
+    private final DomainEntry entry;
+    private final CallbackListener callbackListener;
+    private DomainEntry tempEntries;
+
+    public EditDomainDialog(DomainEntry entry, CallbackListener callbackListener) {
+        viewHolder = new ViewHolder();
+        this.entry = entry;
+        this.callbackListener = callbackListener;
+    }
+
+    private static class ViewHolder {
+        MaterialToolbar toolbar;
+        ListView entriesList;
+    }
 
     @Override
     public void onStart() {
@@ -31,14 +50,12 @@ public class EditDomainDialog extends DialogFragment {
         int width = ViewGroup.LayoutParams.MATCH_PARENT;
         int height = ViewGroup.LayoutParams.MATCH_PARENT;
         window.setLayout(width, height);
-        Util.setStatusBarColors(getResources(), window);
-        toolbar.setBackground(null);
     }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setStyle(DialogFragment.STYLE_NORMAL, R.style.AppTheme_FullScreenDialog);
+        setStyle(DialogFragment.STYLE_NO_FRAME, R.style.AppTheme_FullScreenDialog);
     }
 
     @Nullable
@@ -46,7 +63,11 @@ public class EditDomainDialog extends DialogFragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.dialog_edit_domain, container, false);
 
-        toolbar = view.findViewById(R.id.toolbar);
+        viewHolder.toolbar = view.findViewById(R.id.toolbar);
+        viewHolder.entriesList = view.findViewById(R.id.entryList);
+
+        tempEntries = new DomainEntry(entry);
+        viewHolder.entriesList.setAdapter(new UserEntryEditAdapter(tempEntries, requireContext()));
 
         return view;
     }
@@ -55,9 +76,27 @@ public class EditDomainDialog extends DialogFragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        toolbar.setNavigationOnClickListener(view1 -> dismiss());
-        toolbar.setBackground(null);
-        toolbar.setTitle("Dialog");
-        toolbar.inflateMenu(R.menu.dialog_save);
+        viewHolder.toolbar.setNavigationOnClickListener(view1 -> dismiss());
+        viewHolder.toolbar.inflateMenu(R.menu.menu_edit_domain_dialog);
+        viewHolder.toolbar.setTitle(getString(R.string.editing_domain, entry.getDomain()));
+        viewHolder.toolbar.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.newEntry) {
+                ((UserEntryEditAdapter) viewHolder.entriesList.getAdapter())
+                        .add(new UserEntry(new char[0], new char[0]));
+            } else if (id == R.id.save) {
+                // TODO: save
+                entry.destroy();
+                entry.clone(tempEntries);
+                tempEntries.destroy();
+                tempEntries = null;
+                callbackListener.callback(null);
+                dismiss();
+            } else {
+                return false;
+            }
+            return true;
+        });
     }
+
 }

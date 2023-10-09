@@ -2,13 +2,10 @@
 
     <!-- Base application theme. -->
     <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="android:navigationBarColor">
-            @android:color/transparent
-        </item>
+        <item name="android:windowTranslucentNavigation">true</item>
+        <item name="android:windowTranslucentStatus">true</item>
 
-        <item name="android:statusBarColor">
-            @android:color/transparent
-        </item>
+        <item name="actionButtonStyle">@android:style/Widget.ActionButton</item>
 
         <!-- Customize your theme here. -->
         <item name="colorPrimary">@color/colorPrimary</item>
@@ -16,21 +13,12 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
-    <style name="AppTheme.FullScreenDialog" parent="Theme.Material3.Light.Dialog">
-        <item name="android:navigationBarColor">
-            @android:color/transparent
-        </item>
-
-        <item name="android:statusBarColor">
-            @android:color/transparent
-        </item>
-
-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="colorAccent">@color/colorAccent</item>
-        <item name="colorPrimary">@color/colorPrimary</item>
+    <style name="AppTheme.FullScreenDialog" parent="Theme.Material3.DayNight.Dialog">
+        <item name="android:windowTranslucentNavigation">true</item>
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="colorPrimary">?android:attr/colorBackground</item>
         <item name="android:windowIsFloating">false</item>
         <item name="android:windowBackground">?android:attr/colorBackground</item>
-        <item name="actionMenuTextColor">?android:attr/textColor</item>
     </style>
 
     <style name="generalnotitle" parent="AppTheme">

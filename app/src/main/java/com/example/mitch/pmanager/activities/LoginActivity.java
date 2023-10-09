@@ -1,23 +1,25 @@
 package com.example.mitch.pmanager.activities;
 
-import static com.example.mitch.pmanager.Constants.CALLBACK_CODE;
-import static com.example.mitch.pmanager.Constants.IntentKeys.FILE;
-import static com.example.mitch.pmanager.Constants.IntentKeys.FILEDATA;
-import static com.example.mitch.pmanager.Constants.IntentKeys.FILENAME;
-import static com.example.mitch.pmanager.Constants.IntentKeys.PASSWORD;
-import static com.example.mitch.pmanager.Constants.Version.V2;
-import static com.example.mitch.pmanager.Constants.Version.V3;
-import static com.example.mitch.pmanager.Util.copyFile;
-import static com.example.mitch.pmanager.Util.getFieldChars;
-import static com.example.mitch.pmanager.Util.getFieldString;
-import static com.example.mitch.pmanager.Util.readFile;
-import static com.example.mitch.pmanager.Util.setWindowInsets;
-import static com.example.mitch.pmanager.Util.writeFile;
+import static com.example.mitch.pmanager.util.ByteCharStringUtil.getFieldChars;
+import static com.example.mitch.pmanager.util.ByteCharStringUtil.getFieldString;
+import static com.example.mitch.pmanager.util.Constants.CALLBACK_CODE;
+import static com.example.mitch.pmanager.util.Constants.CALLBACK_FILE;
+import static com.example.mitch.pmanager.util.Constants.CALLBACK_PWD;
+import static com.example.mitch.pmanager.util.Constants.DP16;
+import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILE;
+import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILEDATA;
+import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILENAME;
+import static com.example.mitch.pmanager.util.Constants.IntentKeys.PASSWORD;
+import static com.example.mitch.pmanager.util.Constants.Version.V2;
+import static com.example.mitch.pmanager.util.Constants.Version.V3;
+import static com.example.mitch.pmanager.util.FileUtil.copyFile;
+import static com.example.mitch.pmanager.util.FileUtil.readFile;
+import static com.example.mitch.pmanager.util.FileUtil.writeExternal;
+import static com.example.mitch.pmanager.util.FileUtil.writeFile;
 
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.Window;
@@ -28,18 +30,20 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.documentfile.provider.DocumentFile;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.mitch.pmanager.Constants;
 import com.example.mitch.pmanager.R;
-import com.example.mitch.pmanager.Util;
 import com.example.mitch.pmanager.adapters.FilesAdapter;
 import com.example.mitch.pmanager.background.AES;
 import com.example.mitch.pmanager.interfaces.CallbackListener;
 import com.example.mitch.pmanager.objects.storage.PasswordBank;
+import com.example.mitch.pmanager.util.Constants;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -52,14 +56,24 @@ import java.nio.file.Files;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 
 import javax.crypto.NoSuchPaddingException;
 
+/**
+ * TODO: Automatically sort files
+ * TODO: Automatically sort domains
+ */
 public class LoginActivity extends AppCompatActivity implements CallbackListener {
 
     public static File ROOT_DIR = null;
     public static final int EXIT = 2;
+    private FilesAdapter filesListAdapter;
+
+    private ActivityResultLauncher<String> exportFileLauncher;
+    private File exportSrcFile;
+    private char[] exportPwd;
 
     private ActivityResultLauncher<String[]> importFileLauncher;
 
@@ -69,51 +83,57 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-        Util.setStatusBarColors(this);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         setContentView(R.layout.activity_login);
-        Util.DP16 = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, getResources().getDisplayMetrics());
+        DP16 = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, getResources().getDisplayMetrics());
 
         getRoot();
 
-        ActivityResultLauncher<String> exportFileLauncher = registerForActivityResult(
+        exportFileLauncher = registerForActivityResult(
                 new ActivityResultContracts.CreateDocument("application/octet-stream"),
                 result -> {
                     if (result == null) return;
                     DocumentFile df = DocumentFile.fromSingleUri(this, result);
-                    String filename = Objects.requireNonNull(df).getName();
-                    String ext = Objects.requireNonNull(filename).substring(filename.lastIndexOf('.'));
+                    String chosenFilename = Objects.requireNonNull(df).getName();
+                    String ext = Objects.requireNonNull(chosenFilename).substring(chosenFilename.lastIndexOf('.'));
                     if (!(ext.equals(V2.ext) || ext.equals(V3.ext))) {
                         toast(getString(R.string.accepted_ext), this);
                         return;
                     }
-                    File src = new File(ROOT_DIR, Objects.requireNonNull(filename));
-                    if (!src.exists()) {
-                        toast(getString(R.string.filename_was_changed), this);
-                        return;
-                    }
+
+                    byte[] oldAD = exportSrcFile.getName().getBytes(StandardCharsets.UTF_8);
+                    byte[] newAD = chosenFilename.getBytes(StandardCharsets.UTF_8);
+
                     try (
-                            InputStream in = Files.newInputStream(src.toPath());
-                            OutputStream out = getContentResolver().openOutputStream(result)
+                            OutputStream out = this.getContentResolver().openOutputStream(result)
                     ) {
-                        copyFile(in, Objects.requireNonNull(out));
+                        if (!writeExternal(readFile(oldAD, exportPwd, exportSrcFile), out, newAD, exportPwd)) {
+                            throw new Exception("Couldn't write file");
+                        }
                     } catch (IOException e) {
                         throw new RuntimeException(e);
+                    } catch (Exception e) {
+                        toast(R.string.wrong_password, this);
                     }
+
+                    exportSrcFile = null;
+                    Arrays.fill(exportPwd, (char) 0);
+                    exportPwd = null;
                 }
         );
 
-        FilesAdapter filesListAdapter = new FilesAdapter(this, ROOT_DIR, this, exportFileLauncher);
+        filesListAdapter = new FilesAdapter(this, ROOT_DIR, this);
         RecyclerView filesList = findViewById(R.id.filesList);
+        ViewCompat.setOnApplyWindowInsetsListener(filesList, (v, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(v.getPaddingLeft(), insets.top, v.getPaddingRight(), insets.bottom + DP16 * 5);
+            return WindowInsetsCompat.CONSUMED;
+        });
         filesList.setItemAnimator(null); // TODO: Create animator
         filesList.setLayoutManager(new LinearLayoutManager(this));
         filesList.setAdapter(filesListAdapter);
-        if (filesListAdapter.getItemCount() == 0) {
-            findViewById(R.id.newButtonText).setVisibility(View.VISIBLE);
-            findViewById(R.id.importButtonText).setVisibility(View.VISIBLE);
-            findViewById(R.id.emptyText).setVisibility(View.VISIBLE);
-        }
+        checkEmptyText(filesListAdapter);
 
         importFileLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocument(),
@@ -139,11 +159,10 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
+                    filesListAdapter.add(dest);
+                    checkEmptyText(filesListAdapter);
                 }
         );
-
-        setWindowInsets(findViewById(R.id.buttonPanel), 0, 0, 0);
-        setWindowInsets(findViewById(R.id.filesList), 0, 0, 0);
 
         findViewById(R.id.newButton).setOnClickListener((view) -> {
             final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_create_file, null);
@@ -180,6 +199,7 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
                     return;
                 }
                 filesListAdapter.add(file);
+                checkEmptyText(filesListAdapter);
                 dialog.dismiss();
             });
         });
@@ -187,16 +207,21 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
         findViewById(R.id.importButton).setOnClickListener((view) -> importFileLauncher.launch(new String[]{"application/octet-stream"}));
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        // TODO
-    }
-
-    @Override
-    protected void onUserLeaveHint() {
-        super.onUserLeaveHint();
-        // TODO
+    /**
+     * Checks if the filesListAdapter is empty and properly displays texts accordingly
+     *
+     * @param filesListAdapter Adapter to check
+     */
+    private void checkEmptyText(FilesAdapter filesListAdapter) {
+        if (filesListAdapter.getItemCount() == 0) {
+            findViewById(R.id.newButtonText).setVisibility(View.VISIBLE);
+            findViewById(R.id.importButtonText).setVisibility(View.VISIBLE);
+            findViewById(R.id.emptyText).setVisibility(View.VISIBLE);
+        } else {
+            findViewById(R.id.newButtonText).setVisibility(View.GONE);
+            findViewById(R.id.importButtonText).setVisibility(View.GONE);
+            findViewById(R.id.emptyText).setVisibility(View.GONE);
+        }
     }
 
     /**
@@ -222,16 +247,61 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
 
     /**
      * Makes a toast on the given context
-     * @param text Text to toast
+     *
+     * @param text    Text to toast
      * @param context Context for the source app
      */
     public static void toast(String text, Context context) {
         Toast.makeText(context, text, Toast.LENGTH_LONG).show();
     }
 
+    @Override
+    public void callback(Bundle args) {
+        Constants.CallbackCodes code = (Constants.CallbackCodes) args.getSerializable(CALLBACK_CODE);
+        if (Objects.requireNonNull(code) == Constants.CallbackCodes.LOAD_FILE) {
+            final File file = (File) args.getSerializable(CALLBACK_FILE);
+            if (file == null || !file.exists()) {
+                toast(R.string.error, this);
+                return;
+            }
+
+            final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_password_only, null);
+            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this)
+                    .setView(dialogLayout)
+                    .setTitle(R.string.open_file)
+                    .setMessage(file.getName())
+                    .setPositiveButton(R.string.open, (dialogInterface, i) -> {
+                        char[] pwd = getFieldChars(R.id.password, dialogLayout);
+                        byte[] ad = file.getName().getBytes(StandardCharsets.UTF_8);
+
+                        try {
+                            Intent intent = new Intent(this, FileOpenActivity.class);
+                            intent.putExtra(FILE.key, file);
+                            intent.putExtra(FILENAME.key, ad);
+                            intent.putExtra(PASSWORD.key, pwd);
+                            intent.putExtra(FILEDATA.key, readFile(ad, pwd, file));
+                            startActivity(intent);
+                        } catch (Exception e) {
+                            toast("Incorrect password", this);
+                        }
+                        dialogInterface.dismiss();
+                    })
+                    .setNegativeButton(R.string.cancel, (dialogInterface, i) -> dialogInterface.cancel());
+            builder.create();
+            builder.show();
+        } else if (Objects.requireNonNull(code) == Constants.CallbackCodes.DELETE_FILE) {
+            checkEmptyText(filesListAdapter);
+        } else if (Objects.requireNonNull(code) == Constants.CallbackCodes.EXPORT_FILE) {
+            exportSrcFile = (File) args.getSerializable(CALLBACK_FILE);
+            exportPwd = args.getCharArray(CALLBACK_PWD);
+            exportFileLauncher.launch(exportSrcFile.getName());
+        }
+    }
+
     /**
      * TODO: Remove for release
      * Unused test function for creating an example v2 file to test conversion
+     *
      * @param view view for the onclick function from a button.
      */
     public void createTestOldFile(View view) {
@@ -266,46 +336,4 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
         }
     }
 
-    /**
-     * Callback bundle key for the file
-     */
-    public static final String CALLBACK_FILE = "file";
-
-    @Override
-    public void callback(Bundle args) {
-        Constants.CallbackCodes code = (Constants.CallbackCodes) args.getSerializable(CALLBACK_CODE);
-        if (Objects.requireNonNull(code) == Constants.CallbackCodes.LOAD_FILE) {
-            final File file = (File) args.getSerializable(CALLBACK_FILE);
-            if (file == null || !file.exists()) {
-                Log.i("Bruh", String.valueOf(Objects.requireNonNull(file).exists()));
-                toast(R.string.error, this);
-                return;
-            }
-
-            final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_password_only, null);
-            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this)
-                    .setView(dialogLayout)
-                    .setTitle(R.string.open_file)
-                    .setMessage(file.getName())
-                    .setPositiveButton(R.string.open, (dialogInterface, i) -> {
-                        char[] pwd = getFieldChars(R.id.password, dialogLayout);
-                        byte[] ad = file.getName().getBytes(StandardCharsets.UTF_8);
-
-                        try {
-                            Intent intent = new Intent(this, FileOpenActivity.class);
-                            intent.putExtra(FILE.key, file);
-                            intent.putExtra(FILENAME.key, ad);
-                            intent.putExtra(PASSWORD.key, pwd);
-                            intent.putExtra(FILEDATA.key, readFile(ad, pwd, file));
-                            startActivity(intent);
-                        } catch (Exception e) {
-                            toast("Incorrect password", this);
-                        }
-                        dialogInterface.dismiss();
-                    })
-                    .setNegativeButton(R.string.cancel, (dialogInterface, i) -> dialogInterface.cancel());
-            builder.create();
-            builder.show();
-        }
-    }
 }

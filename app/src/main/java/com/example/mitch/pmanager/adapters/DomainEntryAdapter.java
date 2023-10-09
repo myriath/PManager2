@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.activities.FileOpenActivity;
 import com.example.mitch.pmanager.dialogs.EditDomainDialog;
+import com.example.mitch.pmanager.interfaces.CallbackListener;
 import com.example.mitch.pmanager.objects.storage.DomainEntry;
 
 import java.util.ArrayList;
@@ -23,11 +24,13 @@ public class DomainEntryAdapter extends RecyclerView.Adapter<DomainEntryAdapter.
 
     private final Context context;
     private final ArrayList<DomainEntry> entries;
+    private final CallbackListener callbackListener;
     private int expanded = -1;
 
-    public DomainEntryAdapter(Context context, ArrayList<DomainEntry> entries) {
+    public DomainEntryAdapter(Context context, ArrayList<DomainEntry> entries, CallbackListener callbackListener) {
         this.context = context;
         this.entries = entries;
+        this.callbackListener = callbackListener;
     }
 
     @NonNull
@@ -42,17 +45,20 @@ public class DomainEntryAdapter extends RecyclerView.Adapter<DomainEntryAdapter.
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         DomainEntry entry = entries.get(position);
 
-        // TODO: rethink edit process; needs to account for delete
-
         if (entries.get(holder.getAdapterPosition()).getEntries().size() == 0) {
             holder.moreButton.setVisibility(View.GONE);
+        } else {
+            holder.moreButton.setVisibility(View.VISIBLE);
         }
 
         holder.passwordList.setVisibility(expanded == holder.getAdapterPosition() ? View.VISIBLE : View.GONE);
         holder.domainView.setText(entry.getDomain());
 
         holder.editButton.setOnClickListener(view -> {
-            EditDomainDialog dialog = new EditDomainDialog();
+            EditDomainDialog dialog = new EditDomainDialog(entries.get(holder.getAdapterPosition()), (unused) -> {
+                callbackListener.callback(unused);
+                notifyItemChanged(holder.getAdapterPosition());
+            });
             // TODO: change tag
             dialog.show(((FileOpenActivity) context).getSupportFragmentManager(), "test");
         });

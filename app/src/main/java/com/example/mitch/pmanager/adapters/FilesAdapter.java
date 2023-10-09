@@ -1,15 +1,18 @@
 package com.example.mitch.pmanager.adapters;
 
-import static com.example.mitch.pmanager.Constants.CALLBACK_CODE;
-import static com.example.mitch.pmanager.Constants.CallbackCodes.LOAD_FILE;
-import static com.example.mitch.pmanager.Constants.Version.V3;
-import static com.example.mitch.pmanager.Util.getFieldChars;
-import static com.example.mitch.pmanager.Util.getFieldString;
-import static com.example.mitch.pmanager.Util.readFile;
-import static com.example.mitch.pmanager.Util.writeFile;
-import static com.example.mitch.pmanager.activities.LoginActivity.CALLBACK_FILE;
 import static com.example.mitch.pmanager.activities.LoginActivity.ROOT_DIR;
 import static com.example.mitch.pmanager.activities.LoginActivity.toast;
+import static com.example.mitch.pmanager.util.ByteCharStringUtil.getFieldChars;
+import static com.example.mitch.pmanager.util.ByteCharStringUtil.getFieldString;
+import static com.example.mitch.pmanager.util.Constants.CALLBACK_CODE;
+import static com.example.mitch.pmanager.util.Constants.CALLBACK_FILE;
+import static com.example.mitch.pmanager.util.Constants.CALLBACK_PWD;
+import static com.example.mitch.pmanager.util.Constants.CallbackCodes.DELETE_FILE;
+import static com.example.mitch.pmanager.util.Constants.CallbackCodes.EXPORT_FILE;
+import static com.example.mitch.pmanager.util.Constants.CallbackCodes.LOAD_FILE;
+import static com.example.mitch.pmanager.util.Constants.Version.V3;
+import static com.example.mitch.pmanager.util.FileUtil.readFile;
+import static com.example.mitch.pmanager.util.FileUtil.writeFile;
 
 import android.content.Context;
 import android.os.Bundle;
@@ -21,15 +24,14 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mitch.pmanager.R;
-import com.example.mitch.pmanager.Util;
 import com.example.mitch.pmanager.activities.LoginActivity;
 import com.example.mitch.pmanager.interfaces.CallbackListener;
+import com.example.mitch.pmanager.util.ByteCharStringUtil;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -60,8 +62,6 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
      */
     private int expanded = -1;
 
-    private final ActivityResultLauncher<String> exportFileLauncher;
-
     /**
      * Constructor
      *
@@ -69,11 +69,10 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
      * @param root     Root directory for the files list
      * @param callback Callback for opening a file
      */
-    public FilesAdapter(Context context, File root, CallbackListener callback, ActivityResultLauncher<String> exportFileLauncher) {
+    public FilesAdapter(LoginActivity context, File root, CallbackListener callback) {
         this.context = context;
         entries.addAll(getFiles(root));
         this.callback = callback;
-        this.exportFileLauncher = exportFileLauncher;
     }
 
     /**
@@ -97,7 +96,7 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
     public boolean fileExists(String filename) {
         for (int i = 0; i < entries.size(); i++) {
             File file = entries.get(i);
-            if (Util.removeExtension(file.getName()).equals(filename)) return true;
+            if (ByteCharStringUtil.removeExtension(file.getName()).equals(filename)) return true;
         }
         return false;
     }
@@ -109,7 +108,8 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
      */
     public void add(File file) {
         entries.add(file);
-        notifyItemInserted(entries.size());
+//        notifyItemChanged(entries.size()-1);
+        notifyItemInserted(entries.size() - 1);
     }
 
     /**
@@ -186,16 +186,14 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
             MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(context)
                     .setView(dialogLayout)
                     .setTitle(R.string.export_file)
-                    .setMessage(R.string.the_filename_cannot_change)
                     .setPositiveButton(R.string.export, (dialogInterface, i) -> {
                         char[] pwd = getFieldChars(R.id.password, dialogLayout);
-                        byte[] ad = file.getName().getBytes(StandardCharsets.UTF_8);
-                        try {
-                            readFile(ad, pwd, file);
-                            exportFileLauncher.launch(file.getName());
-                        } catch (Exception e) {
-                            toast(R.string.error, context);
-                        }
+
+                        Bundle bundle = new Bundle();
+                        bundle.putSerializable(CALLBACK_CODE, EXPORT_FILE);
+                        bundle.putCharArray(CALLBACK_PWD, pwd);
+                        bundle.putSerializable(CALLBACK_FILE, file);
+                        callback.callback(bundle);
                         dialogInterface.dismiss();
                     })
                     .setNegativeButton(R.string.cancel, (dialogInterface, i) -> dialogInterface.cancel());
@@ -278,6 +276,9 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
                             readFile(ad, pwd, file);
                             file.delete();
                             remove(holder.getAdapterPosition());
+                            Bundle bundle = new Bundle();
+                            bundle.putSerializable(CALLBACK_CODE, DELETE_FILE);
+                            callback.callback(bundle);
                         } catch (Exception e) {
                             toast(R.string.error, context);
                         }

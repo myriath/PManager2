@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
@@ -139,7 +140,21 @@ public class Encryptor {
     }
 
     /**
+     * Writes the given encrypted data to the given output stream
+     *
+     * @param data Data to write
+     * @param out  OutputStream (usually to an external file from the content resolver)
+     * @throws IOException Thrown if writing fails
+     */
+    public static void writeEncryptedExternal(EncryptedData data, OutputStream out) throws IOException {
+        out.write(data.getSalt());
+        out.write(data.getIv());
+        out.write(data.getCiphertext());
+    }
+
+    /**
      * Fills out an EncryptedData object from a given input file
+     *
      * @param in File to read
      * @return EncryptedData object of the data in the file.
      */

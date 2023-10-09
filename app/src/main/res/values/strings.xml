@@ -45,4 +45,7 @@
     <string name="error_failed_to_save">Error: failed to save</string>
     <string name="dummy_button">Dummy Button</string>
     <string name="dummy_content">DUMMY\nCONTENT</string>
+    <string name="editing_domain">Edit "%s"</string>
+    <string name="username">Username</string>
+    <string name="save">save</string>
 </resources>

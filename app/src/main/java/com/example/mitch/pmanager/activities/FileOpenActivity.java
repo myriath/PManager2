@@ -1,26 +1,28 @@
 package com.example.mitch.pmanager.activities;
 
-import static com.example.mitch.pmanager.Constants.IntentKeys.FILE;
-import static com.example.mitch.pmanager.Constants.IntentKeys.FILEDATA;
-import static com.example.mitch.pmanager.Constants.IntentKeys.FILENAME;
-import static com.example.mitch.pmanager.Constants.IntentKeys.PASSWORD;
-import static com.example.mitch.pmanager.Util.getFieldString;
-import static com.example.mitch.pmanager.Util.setWindowInsets;
-import static com.example.mitch.pmanager.Util.writeFile;
 import static com.example.mitch.pmanager.activities.LoginActivity.toast;
+import static com.example.mitch.pmanager.util.ByteCharStringUtil.getFieldString;
+import static com.example.mitch.pmanager.util.Constants.DP16;
+import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILE;
+import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILEDATA;
+import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILENAME;
+import static com.example.mitch.pmanager.util.Constants.IntentKeys.PASSWORD;
+import static com.example.mitch.pmanager.util.FileUtil.writeFile;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mitch.pmanager.R;
-import com.example.mitch.pmanager.Util;
 import com.example.mitch.pmanager.adapters.DomainEntryAdapter;
 import com.example.mitch.pmanager.objects.storage.PasswordBank;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -31,6 +33,9 @@ import java.io.File;
  * Activity for the main screen
  */
 public class FileOpenActivity extends AppCompatActivity {
+    /**
+     * File used to write to during saving
+     */
     File file;
     /**
      * Filename used as associated data for encryption
@@ -45,29 +50,12 @@ public class FileOpenActivity extends AppCompatActivity {
      */
     PasswordBank bank;
 
-    /**
-     * Enum for sorting methods
-     */
-    private enum Sorts {
-        NO_SORT, INDEX, DOMAIN, USERNAME, PASSWORD
-    }
-
-    /**
-     * Last-used sort method
-     */
-    private Sorts previousSort = Sorts.NO_SORT;
-    /**
-     * Sort direction boolean
-     */
-    private boolean ascendingSort = true;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-        Util.setStatusBarColors(this);
 
         setContentView(R.layout.activity_file_open);
 
@@ -84,8 +72,13 @@ public class FileOpenActivity extends AppCompatActivity {
         }
         if (bank == null) finish();
 
-        DomainEntryAdapter adapter = new DomainEntryAdapter(this, bank.getEntries());
+        DomainEntryAdapter adapter = new DomainEntryAdapter(this, bank.getEntries(), (unused) -> save());
         RecyclerView entriesList = findViewById(R.id.entriesList);
+        ViewCompat.setOnApplyWindowInsetsListener(entriesList, (v, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(v.getPaddingLeft(), insets.top, v.getPaddingRight(), insets.bottom + DP16 * 5);
+            return WindowInsetsCompat.CONSUMED;
+        });
         entriesList.setItemAnimator(null); // TODO: Create animator
         entriesList.setLayoutManager(new LinearLayoutManager(this));
         entriesList.setAdapter(adapter);
@@ -93,9 +86,11 @@ public class FileOpenActivity extends AppCompatActivity {
             findViewById(R.id.newButtonText).setVisibility(View.VISIBLE);
             findViewById(R.id.searchButtonText).setVisibility(View.VISIBLE);
             findViewById(R.id.emptyText).setVisibility(View.VISIBLE);
+        } else {
+            findViewById(R.id.newButtonText).setVisibility(View.GONE);
+            findViewById(R.id.searchButtonText).setVisibility(View.GONE);
+            findViewById(R.id.emptyText).setVisibility(View.GONE);
         }
-
-        setWindowInsets(findViewById(R.id.buttonPanel), 0, 0, 0);
 
         findViewById(R.id.searchButton).setOnClickListener(view -> {
             // TODO: Search
@@ -107,7 +102,12 @@ public class FileOpenActivity extends AppCompatActivity {
                     .setView(dialogLayout)
                     .setTitle(R.string.create_domain)
                     .setPositiveButton(R.string.create, (dialogInterface, i) -> {
+                        int beforeCreationSize = bank.getEntries().size() - 1;
                         bank.createDomain(getFieldString(R.id.domain, dialogLayout));
+                        int afterCreationSize = bank.getEntries().size() - 1;
+                        if (beforeCreationSize != afterCreationSize) {
+                            adapter.notifyItemInserted(afterCreationSize);
+                        }
                         findViewById(R.id.newButtonText).setVisibility(View.GONE);
                         findViewById(R.id.searchButtonText).setVisibility(View.GONE);
                         findViewById(R.id.emptyText).setVisibility(View.GONE);
@@ -120,23 +120,28 @@ public class FileOpenActivity extends AppCompatActivity {
         });
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == LoginActivity.EXIT) {
-            setResult(LoginActivity.EXIT);
-            finish();
-        }
-    }
-
+    /**
+     * Goes back to login screen on changing apps
+     */
     @Override
     protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        setResult(LoginActivity.EXIT);
+        finish();
+    }
+
+    /**
+     * Goes back to login screen on changing apps
+     */
+    @Override
+    protected void onPause() {
+        super.onPause();
         setResult(LoginActivity.EXIT);
         finish();
     }
 
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putSerializable(FILEDATA.key, bank);
     }
@@ -146,336 +151,4 @@ public class FileOpenActivity extends AppCompatActivity {
             toast(getString(R.string.error_failed_to_save), this);
     }
 
-//
-//    /**
-//     * Rebuilds the table for the password display
-//     */
-//    private void rebuildTable() {
-////        TableLayout tl = findViewById(R.id.tableLayout);
-////        clearTable();
-////        for (PasswordEntry entry : fileData) {
-////            createTable(tl, entry);
-////        }
-//    }
-//
-//    /**
-//     * Resets the sorting methods
-//     */
-//    public void resetSorting() {
-//        sort(Sorts.INDEX);
-//        previousSort = Sorts.NO_SORT;
-//        ascendingSort = true;
-//    }
-//
-//    /**
-//     * Sorts the table with the given method
-//     * @param sortFunction Sort method to use
-//     */
-//    private void sort(Sorts sortFunction) {
-//        if (previousSort == sortFunction) {
-//            ascendingSort = !ascendingSort;
-//        } else {
-//            ascendingSort = true;
-//            previousSort = sortFunction;
-//        }
-//
-//        fileData.sort((entry0, entry1) -> {
-//            Integer temp = null;
-//            char[] c0;
-//            char[] c1;
-//            switch (sortFunction) {
-//                case INDEX: {
-//                    temp = Integer.compare(entry0.index, entry1.index);
-//                    c0 = new char[0];
-//                    c1 = new char[0];
-//                    break;
-//                }
-//                case DOMAIN: {
-//                    c0 = entry0.domain;
-//                    c1 = entry1.domain;
-//                    break;
-//                }
-//                case USERNAME: {
-//                    c0 = entry0.username;
-//                    c1 = entry1.username;
-//                    break;
-//                }
-//                case PASSWORD:
-//                default: {
-//                    c0 = entry0.password;
-//                    c1 = entry1.password;
-//                    break;
-//                }
-//            }
-//            String s0 = String.valueOf(c0).toLowerCase();
-//            String s1 = String.valueOf(c1).toLowerCase();
-//            int res = temp == null ? s0.compareTo(s1) : temp;
-//            return ascendingSort ? res : -res;
-//        });
-//
-//        rebuildTable();
-//    }
-//
-//    /**
-//     * Button to add a new password entry
-//     * @param view View for onClick()
-//     */
-//    public void addButton(View view) {
-////        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-////        builder.setTitle(R.string.add_entry);
-////        @SuppressLint("InflateParams")
-////        final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_add, null);
-////        final Context self = this;
-////        builder.setView(dialogLayout);
-////        builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
-////            char[] domain = getFieldChars(R.id.dialog_domain, dialogLayout);
-////            char[] username = getFieldChars(R.id.dialog_username, dialogLayout);
-////            char[] password = getFieldChars(R.id.dialog_password, dialogLayout);
-////            PasswordEntry e = new PasswordEntry(domain, username, password, fileData.size() + 1);
-////            fileData.add(e);
-////            TableLayout tl = findViewById(R.id.tableLayout);
-////
-////            resetSorting();
-////
-////            clearTable();
-////            for (PasswordEntry entry : fileData) {
-////                createTable(tl, entry);
-////            }
-////
-////            toast(R.string.added, self);
-////            writeFile(pmFile, pmFile.getFile(), filename, this.password);
-////        });
-////
-////        builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(R.string.cancelled, self));
-////
-////        AlertDialog dialog = builder.create();
-////        dialog.show();
-//    }
-//
-//    /**
-//     * Deletes an entry
-//     * @param view view for onClick()
-//     */
-//    public void deleteButton(View view) {
-////        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-////        builder.setTitle(R.string.delete_entry);
-////        @SuppressLint("InflateParams")
-////        final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_delete_entry, null);
-////        final Context self = this;
-////        builder.setView(dialogLayout);
-////        builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
-////            int id = Integer.parseInt(getFieldString(R.id.dialog_index, dialogLayout));
-////            if (id >= fileData.size() || id < 1) return;
-////            TableLayout tl = findViewById(R.id.tableLayout);
-////            resetSorting();
-////
-////            clearTable();
-////            fileData.remove(id - 1);
-////            for (PasswordEntry entry : fileData) {
-////                if (entry.index > id) {
-////                    entry.index--;
-////                }
-////                createTable(tl, entry);
-////            }
-////
-////            toast(R.string.deleted, self);
-////            writeFile(pmFile, pmFile.getFile(), filename, password);
-////        });
-////
-////        builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(R.string.cancelled, self));
-////
-////        AlertDialog dialog = builder.create();
-////        dialog.show();
-//    }
-//
-//    /**
-//     * Filters the table
-//     * @param view view for onClick()
-//     */
-//    public void filterButton(View view) {
-////        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-////        builder.setTitle(R.string.filter);
-////        builder.setMessage(R.string.filter_msg);
-////        @SuppressLint("InflateParams")
-////        final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_filter, null);
-////        final Context self = this;
-////        builder.setView(dialogLayout);
-////        builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
-////            String filter = getFieldString(R.id.dialog_filter, dialogLayout).toLowerCase();
-////            TableLayout tl = findViewById(R.id.tableLayout);
-////            clearTable();
-////
-////            RadioButton domainButton = dialogLayout.findViewById(R.id.dialog_radio_domain);
-////            RadioButton usernameButton = dialogLayout.findViewById(R.id.dialog_radio_username);
-////            RadioButton passwordButton = dialogLayout.findViewById(R.id.dialog_radio_password);
-////
-////            if (domainButton.isChecked()) {
-////                for (PasswordEntry entry : fileData) {
-////                    if (String.valueOf(entry.domain).toLowerCase().contains(filter)) {
-////                        createTable(tl, entry);
-////                    }
-////                }
-////            } else if (usernameButton.isChecked()) {
-////                for (PasswordEntry entry : fileData) {
-////                    if (String.valueOf(entry.username).toLowerCase().contains(filter)) {
-////                        createTable(tl, entry);
-////                    }
-////                }
-////            } else if (passwordButton.isChecked()) {
-////                for (PasswordEntry entry : fileData) {
-////                    if (String.valueOf(entry.password).toLowerCase().contains(filter)) {
-////                        createTable(tl, entry);
-////                    }
-////                }
-////            }
-////
-////            toast(R.string.filtered, self);
-////        });
-////
-////        builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(R.string.cancelled, self));
-////
-////        AlertDialog dialog = builder.create();
-////        dialog.show();
-//    }
-//
-//    /**
-//     * Copies a given value
-//     * @param view view for onClick()
-//     */
-//    public void copyButton(View view) {
-////        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-////        builder.setTitle(R.string.copy);
-////        @SuppressLint("InflateParams")
-////        final View dialogLayout = getLayoutInflater().inflate(R.layout.dialog_copy, null);
-////        final Context self = this;
-////        builder.setView(dialogLayout);
-////        builder.setPositiveButton(R.string.ok, (dialogInterface, i) -> {
-////            EditText ct = dialogLayout.findViewById(R.id.dialog_copy_index);
-////
-////            RadioButton copyUsername = dialogLayout.findViewById(R.id.username);
-////            RadioButton copyPassword = dialogLayout.findViewById(R.id.password);
-////
-////            if (copyUsername.isChecked()) {
-////                copy(ct, self, 0);
-////            } else if (copyPassword.isChecked()) {
-////                copy(ct, self, 1);
-////            }
-////        });
-////
-////        builder.setNegativeButton(R.string.cancel, (dialogInterface, i) -> toast(R.string.cancelled, self));
-////
-////        AlertDialog dialog = builder.create();
-////        dialog.show();
-//    }
-//
-//    /**
-//     * Copies the desired data to the clipboard
-//     * @param index Index of the entry to copy
-//     * @param self Activity reference
-//     * @param function Function for deciding the copy value
-//     */
-//    private void copy(EditText index, Context self, int function) {
-////        int copy = Integer.parseInt(index.getText().toString());
-////        ClipboardManager clipboard = (ClipboardManager)
-////                getSystemService(Context.CLIPBOARD_SERVICE);
-////        for (PasswordEntry entry : fileData) {
-////            if (entry.index == copy) {
-////                ClipData clip;
-////                if (function == 0) {
-////                    clip = ClipData.newPlainText("username", CharBuffer.wrap(entry.username));
-////                    toast(getString(R.string.copied_username, copy), self);
-////                } else {
-////                    clip = ClipData.newPlainText("password", CharBuffer.wrap(entry.password));
-////                    toast(getString(R.string.copied_password, copy), self);
-////                }
-////
-////                if (clipboard != null) {
-////                    clipboard.setPrimaryClip(clip);
-////                }
-////                return;
-////            }
-////        }
-//    }
-//
-//    /**
-//     * Resets the filters
-//     * @param view view for onClick()
-//     */
-//    public void resetFilterButton(View view) {
-////        TableLayout tl = findViewById(R.id.tableLayout);
-////        clearTable();
-////        for (PasswordEntry entry : fileData) {
-////            createTable(tl, entry);
-////        }
-////        toast(R.string.filter_reset, this);
-//    }
-//
-//    /**
-//     * Creates the table from the given entry
-//     * @param tl Tablelayout to add rows to
-//     * @param entry entry to get data from
-//     */
-//    private void createTable(TableLayout tl, PasswordEntry entry) {
-//        TextView id = new TextView(this);
-//        id.setPadding(5, 5, 5, 5);
-//        id.setBackgroundColor(Color.LTGRAY);
-//        TextView dm = new TextView(this);
-//        dm.setBackgroundColor(Color.GRAY);
-//        dm.setPadding(5, 5, 5, 5);
-//        TextView un = new TextView(this);
-//        un.setBackgroundColor(Color.LTGRAY);
-//        un.setPadding(5, 5, 5, 5);
-//        TextView pw = new TextView(this);
-//        pw.setBackgroundColor(Color.GRAY);
-//        pw.setPadding(5, 5, 5, 5);
-//        id.setText(String.format(Locale.getDefault(), "%d", entry.index));
-//        dm.setText(entry.domain, 0, entry.domain.length);
-//        dm.setTextColor(Color.WHITE);
-//        un.setText(entry.username, 0, entry.username.length);
-//        pw.setText(entry.password, 0, entry.password.length);
-//        pw.setTextColor(Color.WHITE);
-//        TableRow tr = new TableRow(this);
-//        tr.addView(id);
-//        tr.addView(dm);
-//        tr.addView(un);
-//        tr.addView(pw);
-//        tl.addView(tr);
-//    }
-//
-//    /**
-//     * Clears the table
-//     */
-//    private void clearTable() {
-////        TableLayout tl = findViewById(R.id.tableLayout);
-////        TableRow row1 = findViewById(R.id.row1);
-////        TextView id = new TextView(this);
-////        id.setPadding(5, 5, 5, 5);
-////        id.setBackgroundColor(Color.LTGRAY);
-////        id.setOnClickListener(view -> sort(Sorts.INDEX));
-////        TextView dm = new TextView(this);
-////        dm.setBackgroundColor(Color.GRAY);
-////        dm.setPadding(5, 5, 5, 5);
-////        dm.setOnClickListener(view -> sort(Sorts.DOMAIN));
-////        TextView un = new TextView(this);
-////        un.setBackgroundColor(Color.LTGRAY);
-////        un.setPadding(5, 5, 5, 5);
-////        un.setOnClickListener(view -> sort(Sorts.USERNAME));
-////        TextView pw = new TextView(this);
-////        pw.setBackgroundColor(Color.GRAY);
-////        pw.setPadding(5, 5, 5, 5);
-////        pw.setOnClickListener(view -> sort(Sorts.PASSWORD));
-////        id.setText(R.string.table_index);
-////        dm.setText(R.string.table_domain);
-////        dm.setTextColor(Color.WHITE);
-////        un.setText(R.string.table_username);
-////        pw.setText(R.string.table_password);
-////        pw.setTextColor(Color.WHITE);
-////        row1.removeAllViews();
-////        row1.addView(id);
-////        row1.addView(dm);
-////        row1.addView(un);
-////        row1.addView(pw);
-////        tl.removeAllViews();
-////        tl.addView(row1);
-//    }
 }

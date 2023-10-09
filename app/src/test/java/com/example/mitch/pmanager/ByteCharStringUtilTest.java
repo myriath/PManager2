@@ -1,9 +1,9 @@
 package com.example.mitch.pmanager;
 
-import static com.example.mitch.pmanager.Util.bytesToChars;
-import static com.example.mitch.pmanager.Util.charsToBytes;
-import static com.example.mitch.pmanager.Util.removeExtension;
-import static com.example.mitch.pmanager.Util.splitByChar;
+import static com.example.mitch.pmanager.util.ByteCharStringUtil.bytesToChars;
+import static com.example.mitch.pmanager.util.ByteCharStringUtil.charsToBytes;
+import static com.example.mitch.pmanager.util.ByteCharStringUtil.removeExtension;
+import static com.example.mitch.pmanager.util.ByteCharStringUtil.splitByChar;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
@@ -16,7 +16,7 @@ import java.util.Random;
 /**
  * Tests various utility methods from the Util class
  */
-public class UtilTest {
+public class ByteCharStringUtilTest {
 
     /**
      * Performs a group of various split tests with different test strings and a random number string

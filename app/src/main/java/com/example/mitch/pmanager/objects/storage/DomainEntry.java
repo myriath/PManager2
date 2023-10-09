@@ -16,6 +16,12 @@ public class DomainEntry implements Serializable {
         }
     }
 
+    public DomainEntry(DomainEntry toClone) {
+        this.entries = new ArrayList<>();
+        this.domain = toClone.getDomain();
+        clone(toClone);
+    }
+
     public void remove(int position) {
         shown.remove(position);
         entries.remove(position);
@@ -28,11 +34,26 @@ public class DomainEntry implements Serializable {
 
     public void replace(int position, UserEntry entry) {
         shown.set(position, false);
+        entries.get(position).destroy();
         entries.set(position, entry);
     }
 
     public boolean getShown(int i) {
         return shown.get(i);
+    }
+
+    public void destroy() {
+        for (int i = 0; i < getSize(); i++) {
+            entries.get(0).destroy();
+            entries.remove(0);
+            shown.remove(0);
+        }
+    }
+
+    public void clone(DomainEntry toClone) {
+        for (UserEntry entry : toClone.getEntries()) {
+            add(new UserEntry(entry));
+        }
     }
 
     public void setShown(int pos, boolean newShown) {
@@ -47,5 +68,13 @@ public class DomainEntry implements Serializable {
         return domain;
     }
 
+    public int getSize() {
+        return entries.size();
+    }
+
     private static final long serialVersionUID = 1L;
+
+    public UserEntry getEntry(int i) {
+        return entries.get(i);
+    }
 }

@@ -1,4 +1,4 @@
-package com.example.mitch.pmanager;
+package com.example.mitch.pmanager.util;
 
 /**
  * Constants class for holding various constants
@@ -16,10 +16,13 @@ public class Constants {
         V3(".pm3");
 
         public final String ext;
+
         Version(String ext) {
             this.ext = ext;
         }
     }
+
+    public static final String BACKUP_EXTENSION = ".bak";
 
     /**
      * Intent key string constants
@@ -38,14 +41,12 @@ public class Constants {
     }
 
     public static final String CALLBACK_CODE = "op";
+    public static final String CALLBACK_PWD = "pwd";
+    public static final String CALLBACK_FILE = "file";
 
     public enum CallbackCodes {
-        LOAD_FILE
+        DELETE_FILE, LOAD_FILE, EXPORT_FILE
     }
 
-    public static final String SP_NAME = "PManager_Prefs";
-    public static final String SP_DIR_IMPORT_EXPORT = "PManager_Import_Export";
-
-    public static final String IMPORTS_SUBDIR = "PManagerImports";
-    public static final String EXPORTS_SUBDIR = "PManagerExports";
+    public static int DP16;
 }
