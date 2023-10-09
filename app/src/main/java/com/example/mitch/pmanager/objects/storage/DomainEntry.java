@@ -43,7 +43,8 @@ public class DomainEntry implements Serializable {
     }
 
     public void destroy() {
-        for (int i = 0; i < getSize(); i++) {
+        int size = getSize();
+        for (int i = 0; i < size; i++) {
             entries.get(0).destroy();
             entries.remove(0);
             shown.remove(0);
