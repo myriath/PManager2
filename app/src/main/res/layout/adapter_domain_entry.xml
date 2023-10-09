@@ -16,9 +16,7 @@
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
             android:layout_marginStart="80dp"
-            android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
-            android:layout_marginBottom="16dp"
             android:layout_toStartOf="@id/editButton"
             android:text="@string/placeholder"
             android:textSize="20sp" />
@@ -29,12 +27,26 @@
             android:layout_height="48dp"
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
-            android:layout_margin="16dp"
-            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginStart="8dp"
             android:contentDescription="@string/details"
             android:padding="6dp"
             android:src="@drawable/chevron"
             app:tint="@color/design_default_color_primary" />
+
+        <ImageView
+            android:id="@+id/deleteButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:layout_marginEnd="16dp"
+            android:layout_marginStart="8dp"
+            android:contentDescription="@string/delete"
+            android:padding="6dp"
+            android:src="@drawable/delete"
+            android:visibility="gone"
+            app:tint="@color/design_default_color_error"/>
 
         <ImageView
             android:id="@+id/editButton"
@@ -42,9 +54,7 @@
             android:layout_height="48dp"
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
-            android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
-            android:layout_marginBottom="16dp"
             android:contentDescription="@string/edit"
             android:padding="12dp"
             android:src="@drawable/edit"

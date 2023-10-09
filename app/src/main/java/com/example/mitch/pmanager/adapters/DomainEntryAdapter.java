@@ -47,8 +47,10 @@ public class DomainEntryAdapter extends RecyclerView.Adapter<DomainEntryAdapter.
 
         if (entries.get(holder.getAdapterPosition()).getEntries().size() == 0) {
             holder.moreButton.setVisibility(View.GONE);
+            holder.deleteButton.setVisibility(View.VISIBLE);
         } else {
             holder.moreButton.setVisibility(View.VISIBLE);
+            holder.deleteButton.setVisibility(View.GONE);
         }
 
         holder.passwordList.setVisibility(expanded == holder.getAdapterPosition() ? View.VISIBLE : View.GONE);
@@ -61,6 +63,12 @@ public class DomainEntryAdapter extends RecyclerView.Adapter<DomainEntryAdapter.
             });
             // TODO: change tag
             dialog.show(((FileOpenActivity) context).getSupportFragmentManager(), "test");
+        });
+
+        holder.deleteButton.setOnClickListener(view -> {
+            entries.remove(position);
+            notifyItemRemoved(position);
+            callbackListener.callback(null);
         });
 
         holder.title.setOnClickListener(view -> {
@@ -90,6 +98,7 @@ public class DomainEntryAdapter extends RecyclerView.Adapter<DomainEntryAdapter.
         private final TextView domainView;
         private final ImageView editButton;
         private final ImageView moreButton;
+        private final ImageView deleteButton;
         private final RecyclerView passwordList;
 
         public ViewHolder(@NonNull View view) {
@@ -98,6 +107,7 @@ public class DomainEntryAdapter extends RecyclerView.Adapter<DomainEntryAdapter.
             domainView = view.findViewById(R.id.domainView);
             editButton = view.findViewById(R.id.editButton);
             moreButton = view.findViewById(R.id.moreButton);
+            deleteButton = view.findViewById(R.id.deleteButton);
             passwordList = view.findViewById(R.id.passwordList);
         }
 
