@@ -24,6 +24,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.adapters.DomainEntryAdapter;
+import com.example.mitch.pmanager.dialogs.EditDomainDialog;
+import com.example.mitch.pmanager.objects.storage.DomainEntry;
 import com.example.mitch.pmanager.objects.storage.PasswordBank;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
@@ -94,6 +96,9 @@ public class FileOpenActivity extends AppCompatActivity {
 
         findViewById(R.id.searchButton).setOnClickListener(view -> {
             // TODO: Search
+            // TODO: Search bar at top
+            //       Automatically updates with new text
+            //       Searches all (domain, username, password) at the same time
         });
 
         findViewById(R.id.newButton).setOnClickListener(view -> {
@@ -113,6 +118,8 @@ public class FileOpenActivity extends AppCompatActivity {
                         findViewById(R.id.emptyText).setVisibility(View.GONE);
                         dialogInterface.dismiss();
                         save();
+
+                        startEditDialog(this, afterCreationSize, adapter);
                     })
                     .setNegativeButton(R.string.cancel, (dialogInterface, i) -> dialogInterface.cancel());
             builder.create();
@@ -149,6 +156,15 @@ public class FileOpenActivity extends AppCompatActivity {
     private void save() {
         if (!writeFile(bank, file, filename, password))
             toast(getString(R.string.error_failed_to_save), this);
+    }
+
+    public static void startEditDialog(FileOpenActivity context, int position, DomainEntryAdapter adapter) {
+        EditDomainDialog dialog = new EditDomainDialog(context.bank.getEntries().get(position), (unused) -> {
+            context.save();
+            adapter.notifyItemChanged(position);
+        });
+        // TODO: change tag
+        dialog.show(context.getSupportFragmentManager(), "test");
     }
 
 }

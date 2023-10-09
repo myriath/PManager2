@@ -56,14 +56,7 @@ public class DomainEntryAdapter extends RecyclerView.Adapter<DomainEntryAdapter.
         holder.passwordList.setVisibility(expanded == holder.getAdapterPosition() ? View.VISIBLE : View.GONE);
         holder.domainView.setText(entry.getDomain());
 
-        holder.editButton.setOnClickListener(view -> {
-            EditDomainDialog dialog = new EditDomainDialog(entries.get(holder.getAdapterPosition()), (unused) -> {
-                callbackListener.callback(unused);
-                notifyItemChanged(holder.getAdapterPosition());
-            });
-            // TODO: change tag
-            dialog.show(((FileOpenActivity) context).getSupportFragmentManager(), "test");
-        });
+        holder.editButton.setOnClickListener(view -> FileOpenActivity.startEditDialog((FileOpenActivity) context, position, this));
 
         holder.deleteButton.setOnClickListener(view -> {
             entries.remove(position);
