@@ -1,5 +1,7 @@
 package com.example.mitch.pmanager.objects.storage;
 
+import com.example.mitch.pmanager.adapters.UserEntryEditAdapter;
+
 import java.io.Serializable;
 import java.util.Arrays;
 
@@ -17,6 +19,14 @@ public class UserEntry implements Serializable {
     private char[] password;
 
     /**
+     * Default constructor
+     * Empty username and password
+     */
+    public UserEntry() {
+        this(new char[0], new char[0]);
+    }
+
+    /**
      * Constructor
      *
      * @param username Username for this entry
@@ -27,6 +37,11 @@ public class UserEntry implements Serializable {
         this.password = password;
     }
 
+    /**
+     * Clone constructor
+     * Creates a copy of the given UserEntry
+     * @param toClone entry to clone
+     */
     public UserEntry(UserEntry toClone) {
         this.username = new char[toClone.username.length];
         this.password = new char[toClone.password.length];

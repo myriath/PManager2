@@ -67,6 +67,7 @@ public class EditDomainDialog extends DialogFragment {
         viewHolder.entriesList = view.findViewById(R.id.entryList);
 
         tempEntries = new DomainEntry(entry);
+        if (tempEntries.getSize() == 0) tempEntries.add(new UserEntry());
         viewHolder.entriesList.setAdapter(new UserEntryEditAdapter(tempEntries, requireContext()));
 
         return view;
@@ -82,8 +83,7 @@ public class EditDomainDialog extends DialogFragment {
         viewHolder.toolbar.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
             if (id == R.id.newEntry) {
-                ((UserEntryEditAdapter) viewHolder.entriesList.getAdapter())
-                        .add(new UserEntry(new char[0], new char[0]));
+                ((UserEntryEditAdapter) viewHolder.entriesList.getAdapter()).add(new UserEntry());
             } else if (id == R.id.save) {
                 // TODO: save
                 entry.destroy();
