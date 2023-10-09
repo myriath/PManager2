@@ -88,14 +88,20 @@ public class UserEntryEditAdapter extends BaseAdapter {
         viewHolder.usernameField.getEditText().setOnFocusChangeListener((view, hasFocus) -> {
             if (!hasFocus) {
                 final EditText usernameField = (EditText) view;
-                domainEntry.getEntry(viewHolder.id).setUsername(getFieldChars(usernameField));
+                try {
+                    domainEntry.getEntry(viewHolder.id).setUsername(getFieldChars(usernameField));
+                } catch (IndexOutOfBoundsException ignored) {
+                }
             }
         });
 
         viewHolder.passwordField.getEditText().setOnFocusChangeListener((view, hasFocus) -> {
             if (!hasFocus) {
                 final EditText passwordField = (EditText) view;
-                domainEntry.getEntry(viewHolder.id).setPassword(getFieldChars(passwordField));
+                try {
+                    domainEntry.getEntry(viewHolder.id).setPassword(getFieldChars(passwordField));
+                } catch (IndexOutOfBoundsException ignored) {
+                }
             }
         });
 

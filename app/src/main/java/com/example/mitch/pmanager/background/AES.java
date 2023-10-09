@@ -5,14 +5,11 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 
-import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.CipherOutputStream;
-import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -76,17 +73,18 @@ public class AES {
 
     /**
      * Decrypts a given file
+     *
      * @param out File to decrypt
      * @return String of the decrypted data
      * @throws InvalidKeyException Thrown if the key is invalid (incorrect password)
      */
-    public String decrypt(File out) throws InvalidKeyException {
+    public String decrypt(File out) throws Exception {
         String content;
         try (FileInputStream fileIn = new FileInputStream(out)) {
             byte[] fileIv = new byte[16];
             //noinspection ResultOfMethodCallIgnored
             fileIn.read(fileIv);
-            byte[] toDecrypt = new byte[(int)(out.length()-16)];
+            byte[] toDecrypt = new byte[(int) (out.length() - 16)];
             //noinspection ResultOfMethodCallIgnored
             fileIn.read(toDecrypt);
             cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(fileIv));
@@ -96,13 +94,10 @@ public class AES {
                 if (b == '\0') {
                     sb.append(System.lineSeparator());
                 } else {
-                    sb.append((char)b);
+                    sb.append((char) b);
                 }
             }
             content = sb.toString();
-        } catch (IOException | InvalidAlgorithmParameterException | IllegalBlockSizeException | BadPaddingException e) {
-            e.printStackTrace();
-            return "\0";
         }
         return content;
     }

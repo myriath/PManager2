@@ -6,6 +6,11 @@
     android:layout_height="match_parent"
     tools:context=".activities.LoginActivity">
 
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/testButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/filesList"
         android:layout_width="match_parent"

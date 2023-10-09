@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -116,7 +117,26 @@ public class FileUtil {
      */
     public static PasswordBank readFile(byte[] associatedData, char[] pwd, File file) throws Exception {
         Encryptor.EncryptedData encrypted = Encryptor.readFromFile(file);
-        byte[] data = Encryptor.decrypt(encrypted, associatedData, pwd);
+        byte[] data;
+        try {
+            data = Encryptor.decrypt(encrypted, associatedData, pwd);
+        } catch (Exception e) {
+            // Translates old v2 file to password bank
+            String oldPath = file.getPath();
+            int separator = oldPath.lastIndexOf('.');
+//            if (!oldPath.substring(separator).equals(V2.ext))
+            String newPath = oldPath.substring(0, oldPath.lastIndexOf('.')) + V3.ext;
+
+            File oldFile = file;
+            file = new File(newPath);
+
+            PMFile pmFile = PMFile.translateV2toV3(oldFile, file, pwd);
+            PasswordBank bank = PMFileToBank(pmFile);
+            if (writeFile(bank, file, file.getName().getBytes(StandardCharsets.UTF_8), pwd)) {
+                oldFile.delete();
+            }
+            return PMFileToBank(pmFile);
+        }
         try (ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInputStream ois = new ObjectInputStream(bis)) {
             Object read = ois.readObject();
             if (read.getClass() == PMFile.class) {
@@ -156,7 +176,7 @@ public class FileUtil {
         PasswordBank bank = new PasswordBank();
         for (PasswordEntry entry : file.getPasswordEntries()) {
             String domain = String.valueOf(entry.domain);
-            bank.getEntry(domain).add(new UserEntry(entry.username, entry.password));
+            bank.createDomain(domain).add(new UserEntry(entry.username, entry.password));
         }
         return bank;
     }

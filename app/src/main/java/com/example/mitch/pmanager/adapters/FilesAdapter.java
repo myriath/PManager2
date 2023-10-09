@@ -14,6 +14,7 @@ import static com.example.mitch.pmanager.util.Constants.Version.V3;
 import static com.example.mitch.pmanager.util.FileUtil.readFile;
 import static com.example.mitch.pmanager.util.FileUtil.writeFile;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -288,6 +289,18 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
             builder.create();
             builder.show();
         });
+    }
+
+    /**
+     * Resets the adapter and re fetches file list
+     *
+     * @param root Filesystem root
+     */
+    @SuppressLint("NotifyDataSetChanged")
+    public void reset(File root) {
+        entries.clear();
+        entries.addAll(getFiles(root));
+        notifyDataSetChanged();
     }
 
     /**

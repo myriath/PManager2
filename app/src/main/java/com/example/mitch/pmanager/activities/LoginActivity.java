@@ -64,6 +64,14 @@ import javax.crypto.NoSuchPaddingException;
 /**
  * TODO: Automatically sort files
  * TODO: Automatically sort domains
+ * TODO: Eye should turn to /eye when showing passwords
+ * TODO: Automatically open new files
+ * TODO: move delete in edit to password line
+ * TODO: edit domain name
+ * TODO: Fix scrolling issues with keyboard (also toolbar goes off screen) editing
+ * TODO: JavaDocs
+ * <p>
+ * server : none : nu11-SQL
  */
 public class LoginActivity extends AppCompatActivity implements CallbackListener {
 
@@ -205,6 +213,8 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
         });
 
         findViewById(R.id.importButton).setOnClickListener((view) -> importFileLauncher.launch(new String[]{"application/octet-stream"}));
+
+        findViewById(R.id.testButton).setOnClickListener((this::createTestOldFile));
     }
 
     /**
@@ -280,6 +290,8 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
                             intent.putExtra(FILENAME.key, ad);
                             intent.putExtra(PASSWORD.key, pwd);
                             intent.putExtra(FILEDATA.key, readFile(ad, pwd, file));
+                            // TODO: maybe check if this is needed through some result code?
+                            filesListAdapter.reset(ROOT_DIR);
                             startActivity(intent);
                         } catch (Exception e) {
                             toast("Incorrect password", this);
@@ -319,20 +331,22 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
         }
         dat.add("TestEmpty");
         dat.add("");
-        dat.add("");
+        dat.add("lol");
         StringBuilder sb = new StringBuilder();
         for (String str : dat) {
             sb.append(str);
             sb.append('\0');
         }
         try {
-            AES f = new AES(AES.pad("testpass"));
+            AES f = new AES(AES.pad("test"));
             f.encryptString(sb.toString(), file);
             if (!f.decrypt(file).split(System.lineSeparator())[0].equals("test.jpweds")) {
                 createTestOldFile(view);
             }
         } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException e1) {
             e1.printStackTrace();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
