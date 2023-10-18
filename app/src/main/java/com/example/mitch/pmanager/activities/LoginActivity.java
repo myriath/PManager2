@@ -69,6 +69,7 @@ import javax.crypto.NoSuchPaddingException;
  * TODO: edit domain name
  * TODO: Fix scrolling issues with keyboard (also toolbar goes off screen) editing
  * TODO: JavaDocs
+ * TODO: Fix crash when deleting last domain (sometimes? maybe after deleting others?)
  * <p>
  * server : none : nu11-SQL
  */
