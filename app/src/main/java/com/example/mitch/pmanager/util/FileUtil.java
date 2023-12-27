@@ -172,7 +172,7 @@ public class FileUtil {
      * @param file PMFile to convert
      * @return converted PasswordBank
      */
-    private static PasswordBank PMFileToBank(PMFile file) {
+    public static PasswordBank PMFileToBank(PMFile file) {
         PasswordBank bank = new PasswordBank();
         for (PasswordEntry entry : file.getPasswordEntries()) {
             String domain = String.valueOf(entry.domain);

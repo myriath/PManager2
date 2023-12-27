@@ -1,12 +1,23 @@
 package com.example.mitch.pmanager.background;
 
+import static com.example.mitch.pmanager.util.ByteCharStringUtil.splitByChar;
+
+import android.util.Log;
+
+import com.example.mitch.pmanager.models.Entry;
+import com.example.mitch.pmanager.models.Folder;
+
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
+import java.util.Objects;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherOutputStream;
@@ -100,6 +111,80 @@ public class AES {
             content = sb.toString();
         }
         return content;
+    }
+
+    /**
+     * Updated method for new translation
+     */
+    public String decrypt(InputStream in) throws Exception {
+        byte[] fileIv = new byte[16];
+        in.read(fileIv);
+
+        int i;
+        byte[] buf = new byte[1024];
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        while ((i = in.read(buf, 0, buf.length)) != -1) {
+            baos.write(buf, 0, i);
+        }
+        byte[] toDecrypt = baos.toByteArray();
+
+        cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(fileIv));
+        byte[] decrypted = cipher.doFinal(toDecrypt);
+        StringBuilder sb = new StringBuilder();
+        for (byte b : decrypted) {
+            if (b == '\0') {
+                sb.append(System.lineSeparator());
+            } else {
+                sb.append((char) b);
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Parses an input stream into a string of decrypted data with filename check.
+     * @param in encrypted data
+     * @param filename filename to check
+     * @param password password to decrypt with
+     * @return Decrypted string
+     * @throws Exception Thrown when decryption fails, usually wrong password
+     */
+    public static String parse(InputStream in, String filename, char[] password) throws Exception {
+        String data;
+        String[] splitFile;
+        if (in == null) throw new IOException("In is null");
+        AES decrypt = new AES(pad(String.valueOf(password)));
+        data = decrypt.decrypt(in);
+        Log.i("Decrypted", data);
+        splitFile = data.split(System.lineSeparator());
+
+        if (!splitFile[0].equals(filename)) {
+            throw new Exception();
+        }
+        return data;
+    }
+
+    /**
+     * Updates data string from V2 to a folder hashmap in V4
+     * @param data Data to update
+     * @param folders V4 folders hashmap
+     */
+    public static void modernize(String data, HashMap<String, Folder> folders) {
+        char[][] splitData = splitByChar(data.toCharArray(), '\n');
+        int entryCount = (splitData.length - 1) / 3;
+        for (int j = 0; j < entryCount; j++) {
+            int entryIndex = j * 3 + 1;
+            String label = String.valueOf(splitData[entryIndex]);
+            Entry entry = new Entry(splitData[entryIndex+1], splitData[entryIndex+2]);
+            try {
+                Folder folder = Objects.requireNonNull(folders.get(label));
+                folder.getEntries().add(entry);
+            } catch (Exception e) {
+                Folder folder = new Folder(label);
+                folder.getEntries().add(entry);
+                folders.put(label, folder);
+            }
+        }
     }
 
     /**

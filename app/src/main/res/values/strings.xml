@@ -29,7 +29,7 @@
     <string name="delete">Delete</string>
     <string name="are_you_sure_this_cannot_be_undone">Are you sure? This cannot be undone.</string>
     <string name="open_file">Open File</string>
-    <string name="accepted_ext">Only accepts .pm3 or .jpweds</string>
+    <string name="accepted_ext">Invalid file type</string>
     <string name="create_file">Create file</string>
     <string name="create">Create</string>
     <string name="wrong_password">Wrong Password</string>

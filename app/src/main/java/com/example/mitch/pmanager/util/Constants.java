@@ -4,9 +4,12 @@ package com.example.mitch.pmanager.util;
  * Constants class for holding various constants
  */
 public class Constants {
+    public static final String BACKUP_EXTENSION = ".bak";
+
     /**
      * Version enum for storing versions and extensions
      */
+    @Deprecated
     public enum Version {
         /**
          * Used in case of no extension
@@ -16,13 +19,17 @@ public class Constants {
         V3(".pm3");
 
         public final String ext;
-
         Version(String ext) {
             this.ext = ext;
         }
     }
 
-    public static final String BACKUP_EXTENSION = ".bak";
+    public interface Extensions {
+        String V2 = ".jpweds";
+        String V3 = ".pm3";
+        String V4 = ".pm4";
+        String DB = ".db";
+    }
 
     /**
      * Intent key string constants

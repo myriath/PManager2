@@ -54,6 +54,7 @@ public class WindowUtil {
         int length = Objects.requireNonNull(editText).length();
         char[] chars = new char[length];
         Objects.requireNonNull(editText.getText()).getChars(0, length, chars, 0);
+        editText.setText("");
         return chars;
     }
 

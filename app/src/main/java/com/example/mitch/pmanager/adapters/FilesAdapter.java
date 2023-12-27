@@ -1,6 +1,6 @@
 package com.example.mitch.pmanager.adapters;
 
-import static com.example.mitch.pmanager.activities.LoginActivity.ROOT_DIR;
+import static com.example.mitch.pmanager.activities.LoginActivity.IMPORT_DIR;
 import static com.example.mitch.pmanager.activities.LoginActivity.toast;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_CODE;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_FILE;
@@ -219,7 +219,7 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
                     ((TextInputLayout) dialogLayout.findViewById(R.id.filename)).setError(context.getString(R.string.cannot_be_empty));
                     return;
                 }
-                File newFile = new File(ROOT_DIR, newFilename);
+                File newFile = new File(IMPORT_DIR, newFilename);
                 byte[] oldAD = oldFilename.getBytes(StandardCharsets.UTF_8);
                 byte[] newAD = newFilename.getBytes(StandardCharsets.UTF_8);
                 char[] pwd = getFieldChars(R.id.password, dialogLayout);

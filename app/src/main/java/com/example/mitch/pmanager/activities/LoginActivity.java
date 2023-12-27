@@ -4,16 +4,15 @@ import static com.example.mitch.pmanager.util.Constants.CALLBACK_CODE;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_FILE;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_PWD;
 import static com.example.mitch.pmanager.util.Constants.DP16;
+import static com.example.mitch.pmanager.util.Constants.Extensions.V3;
 import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILE;
 import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILEDATA;
 import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILENAME;
 import static com.example.mitch.pmanager.util.Constants.IntentKeys.PASSWORD;
-import static com.example.mitch.pmanager.util.Constants.Version.V2;
-import static com.example.mitch.pmanager.util.Constants.Version.V3;
-import static com.example.mitch.pmanager.util.FileUtil.copyFile;
 import static com.example.mitch.pmanager.util.FileUtil.readFile;
-import static com.example.mitch.pmanager.util.FileUtil.writeExternal;
 import static com.example.mitch.pmanager.util.FileUtil.writeFile;
+import static com.example.mitch.pmanager.util.FilesUtil.exportCallback;
+import static com.example.mitch.pmanager.util.FilesUtil.importCallback;
 import static com.example.mitch.pmanager.util.WindowUtil.getFieldChars;
 import static com.example.mitch.pmanager.util.WindowUtil.getFieldString;
 
@@ -33,7 +32,6 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.documentfile.provider.DocumentFile;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -47,18 +45,14 @@ import com.example.mitch.pmanager.util.Constants;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Objects;
 
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 
 /**
  * TODO: Automatically sort files
@@ -74,20 +68,23 @@ import javax.crypto.NoSuchPaddingException;
  * server : none : nu11-SQL
  */
 public class LoginActivity extends AppCompatActivity implements CallbackListener {
-
-    public static File ROOT_DIR = null;
+    private static File FILES_DIR = null;
+    private static File IMPORT_DIR = null;
+    private static File DB_DIR = null;
     public static final int EXIT = 2;
     private FilesAdapter filesListAdapter;
 
     private ActivityResultLauncher<String> exportFileLauncher;
     private File exportSrcFile;
-    private char[] exportPwd;
+    private SecretKey exportKey;
 
     private ActivityResultLauncher<String[]> importFileLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        FILES_DIR = getFilesDir();
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
@@ -98,42 +95,7 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
         setContentView(R.layout.activity_login);
         DP16 = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, getResources().getDisplayMetrics());
 
-        getRoot();
-
-        exportFileLauncher = registerForActivityResult(
-                new ActivityResultContracts.CreateDocument("application/octet-stream"),
-                result -> {
-                    if (result == null) return;
-                    DocumentFile df = DocumentFile.fromSingleUri(this, result);
-                    String chosenFilename = Objects.requireNonNull(df).getName();
-                    String ext = Objects.requireNonNull(chosenFilename).substring(chosenFilename.lastIndexOf('.'));
-                    if (!(ext.equals(V2.ext) || ext.equals(V3.ext))) {
-                        toast(getString(R.string.accepted_ext), this);
-                        return;
-                    }
-
-                    byte[] oldAD = exportSrcFile.getName().getBytes(StandardCharsets.UTF_8);
-                    byte[] newAD = chosenFilename.getBytes(StandardCharsets.UTF_8);
-
-                    try (
-                            OutputStream out = this.getContentResolver().openOutputStream(result)
-                    ) {
-                        if (!writeExternal(readFile(oldAD, exportPwd, exportSrcFile), out, newAD, exportPwd)) {
-                            throw new Exception("Couldn't write file");
-                        }
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    } catch (Exception e) {
-                        toast(R.string.wrong_password, this);
-                    }
-
-                    exportSrcFile = null;
-                    Arrays.fill(exportPwd, (char) 0);
-                    exportPwd = null;
-                }
-        );
-
-        filesListAdapter = new FilesAdapter(this, ROOT_DIR, this);
+        filesListAdapter = new FilesAdapter(this, getImportDir(), this);
         RecyclerView filesList = findViewById(R.id.filesList);
         ViewCompat.setOnApplyWindowInsetsListener(filesList, (v, windowInsets) -> {
             Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -145,33 +107,14 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
         filesList.setAdapter(filesListAdapter);
         checkEmptyText(filesListAdapter);
 
+        exportFileLauncher = registerForActivityResult(
+                new ActivityResultContracts.CreateDocument("application/octet-stream"),
+                exportCallback(this)
+        );
+
         importFileLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocument(),
-                result -> {
-                    if (result == null) return;
-                    DocumentFile df = DocumentFile.fromSingleUri(this, result);
-                    String filename = Objects.requireNonNull(df).getName();
-                    String ext = Objects.requireNonNull(filename).substring(filename.lastIndexOf('.'));
-                    if (!(ext.equals(V2.ext) || ext.equals(V3.ext))) {
-                        toast(getString(R.string.accepted_ext), this);
-                        return;
-                    }
-                    File dest = new File(ROOT_DIR, Objects.requireNonNull(filename));
-                    if (filesListAdapter.fileExists(filename) || dest.exists()) {
-                        toast(R.string.error, this);
-                        return;
-                    }
-                    try (
-                            InputStream in = getContentResolver().openInputStream(result);
-                            OutputStream out = Files.newOutputStream(dest.toPath())
-                    ) {
-                        copyFile(Objects.requireNonNull(in), out);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    filesListAdapter.add(dest);
-                    checkEmptyText(filesListAdapter);
-                }
+                importCallback(this)
         );
 
         findViewById(R.id.newButton).setOnClickListener((view) -> {
@@ -194,7 +137,7 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
                             dialogInterface.cancel();
                             return;
                         }
-                        File file = new File(ROOT_DIR, filename + V3.ext);
+                        File file = new File(getImportDir(), filename + V3.ext);
                         if (!writeFile(
                                 new PasswordBank(),
                                 file,
@@ -237,19 +180,29 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
     /**
      * Gets the root file directory for the app.
      */
-    private void getRoot() {
-        ROOT_DIR = new File(getFilesDir(), "PManager");
-        if (!ROOT_DIR.exists()) {
-            if (ROOT_DIR.mkdirs()) {
-                System.out.println("done");
-            }
-        }
+    public static File getImportDir() {
+        if (IMPORT_DIR != null) return IMPORT_DIR;
+        IMPORT_DIR = new File(FILES_DIR, "PManager");
+        if (IMPORT_DIR.exists()) return IMPORT_DIR;
+        if (!IMPORT_DIR.mkdirs()) return null;
+        System.out.println("Created PManager");
+        return IMPORT_DIR;
+    }
+
+    public static File getDBDir() {
+        if (DB_DIR != null) return DB_DIR;
+        DB_DIR = new File(FILES_DIR, "databases");
+        if (DB_DIR.exists()) return DB_DIR;
+        if (!DB_DIR.mkdirs()) return null;
+        System.out.println("Created databases");
+        return DB_DIR;
     }
 
     /**
      * Makes a toast on the given context
+     *
      * @param stringId R string id to display
-     * @param context Context for the source app
+     * @param context  Context for the source app
      */
     public static void toast(int stringId, Context context) {
         Toast.makeText(context, stringId, Toast.LENGTH_LONG).show();
@@ -290,7 +243,7 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
                             intent.putExtra(PASSWORD.key, pwd);
                             intent.putExtra(FILEDATA.key, readFile(ad, pwd, file));
                             // TODO: maybe check if this is needed through some result code?
-                            filesListAdapter.reset(ROOT_DIR);
+                            filesListAdapter.reset(getImportDir());
                             startActivity(intent);
                         } catch (Exception e) {
                             toast("Incorrect password", this);
@@ -315,8 +268,8 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
      * @param view view for the onclick function from a button.
      */
     public void createTestOldFile(View view) {
-        File file = new File(ROOT_DIR, "test.jpweds");
-        File file2 = new File(ROOT_DIR, "test.pm3");
+        File file = new File(getImportDir(), "test.jpweds");
+        File file2 = new File(getImportDir(), "test.pm3");
         file.delete();
         file2.delete();
 

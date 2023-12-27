@@ -69,6 +69,7 @@ public class ByteCharStringUtil {
         CharBuffer charBuffer = StandardCharsets.UTF_8.decode(byteBuffer);
         char[] chars = Arrays.copyOfRange(charBuffer.array(), charBuffer.position(), charBuffer.limit());
         Arrays.fill(charBuffer.array(), (char) 0);
+        Arrays.fill(byteBuffer.array(), (byte) 0);
         return chars;
     }
 
@@ -81,6 +82,7 @@ public class ByteCharStringUtil {
         CharBuffer charBuffer = CharBuffer.wrap(arr);
         ByteBuffer byteBuffer = StandardCharsets.UTF_8.encode(charBuffer);
         byte[] bytes = Arrays.copyOfRange(byteBuffer.array(), byteBuffer.position(), byteBuffer.limit());
+        Arrays.fill(charBuffer.array(), (char) 0);
         Arrays.fill(byteBuffer.array(), (byte) 0);
         return bytes;
     }
@@ -96,5 +98,4 @@ public class ByteCharStringUtil {
         if (sub < 0) sub = str.length();
         return str.substring(0, sub);
     }
-
 }
