@@ -1,8 +1,7 @@
 package com.example.mitch.pmanager.objects;
 
+import static com.example.mitch.pmanager.util.Constants.STRING_ENCODING;
 import static com.example.mitch.pmanager.util.FileUtil.parseV2Data;
-
-import android.util.Log;
 
 import com.example.mitch.pmanager.background.AES;
 import com.example.mitch.pmanager.exceptions.DecryptionException;
@@ -11,7 +10,6 @@ import com.example.mitch.pmanager.util.Constants;
 
 import java.io.File;
 import java.io.Serializable;
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -97,7 +95,6 @@ public class PMFile implements Serializable, Writable {
             String[] splitFile;
             AES decrypt = new AES(AES.pad(String.valueOf(pwd)));
             data = decrypt.decrypt(in);
-            Log.i("Decrypted", data);
             splitFile = data.split(System.lineSeparator());
 
             if (!splitFile[0].equals(in.getName())) {
@@ -109,7 +106,7 @@ public class PMFile implements Serializable, Writable {
 
         String filename = out.getName();
         data = filename + data.substring(data.indexOf(System.lineSeparator()));
-        return parseV2Data(data.getBytes(StandardCharsets.UTF_8), out);
+        return parseV2Data(data.getBytes(STRING_ENCODING), out);
     }
 
 

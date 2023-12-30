@@ -7,13 +7,12 @@ import androidx.room.Query;
 import androidx.room.Update;
 
 import com.example.mitch.pmanager.database.entity.FolderEntity;
-
-import java.util.List;
+import com.example.mitch.pmanager.database.entity.MetadataEntity;
 
 @Dao
-public interface FolderDAO {
-    @Query("SELECT * FROM folders")
-    List<FolderEntity> getFolders();
+public interface MetadataDAO {
+    @Query("SELECT * FROM metadata WHERE id = :id")
+    MetadataEntity getMeta(long id);
 
     @Insert
     long insert(FolderEntity folder);

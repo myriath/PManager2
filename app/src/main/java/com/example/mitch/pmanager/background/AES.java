@@ -1,8 +1,7 @@
 package com.example.mitch.pmanager.background;
 
-import static com.example.mitch.pmanager.util.ByteCharStringUtil.splitByChar;
-
-import android.util.Log;
+import static com.example.mitch.pmanager.util.Constants.STRING_ENCODING;
+import static com.example.mitch.pmanager.util.StringsUtil.splitByChar;
 
 import com.example.mitch.pmanager.models.Entry;
 import com.example.mitch.pmanager.models.Folder;
@@ -13,11 +12,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
-import java.util.Objects;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherOutputStream;
@@ -56,7 +53,7 @@ public class AES {
      * @throws NoSuchAlgorithmException Thrown if AES/CBC/PKCS5Padding is removed
      */
     public AES(String keyString) throws NoSuchPaddingException, NoSuchAlgorithmException {
-        byte[] keyBytes = keyString.getBytes(StandardCharsets.UTF_8);
+        byte[] keyBytes = keyString.getBytes(STRING_ENCODING);
         key = new SecretKeySpec(keyBytes, ALG_STRING);
         cipher = Cipher.getInstance(CIPHER_STRING);
     }
@@ -68,7 +65,7 @@ public class AES {
      * @throws InvalidKeyException Thrown if the key is invalid (incorrect password)
      */
     public void encryptString(String toEncrypt, File out) throws InvalidKeyException {
-        byte[] bytes = toEncrypt.getBytes(StandardCharsets.UTF_8);
+        byte[] bytes = toEncrypt.getBytes(STRING_ENCODING);
         cipher.init(Cipher.ENCRYPT_MODE, key);
         byte[] iv = cipher.getIV();
         try (
@@ -143,19 +140,19 @@ public class AES {
 
     /**
      * Parses an input stream into a string of decrypted data with filename check.
-     * @param in encrypted data
+     *
+     * @param in       encrypted data
      * @param filename filename to check
      * @param password password to decrypt with
      * @return Decrypted string
      * @throws Exception Thrown when decryption fails, usually wrong password
      */
-    public static String parse(InputStream in, String filename, char[] password) throws Exception {
+    public static String parse(InputStream in, String filename, String password) throws Exception {
         String data;
         String[] splitFile;
         if (in == null) throw new IOException("In is null");
-        AES decrypt = new AES(pad(String.valueOf(password)));
+        AES decrypt = new AES(pad(password));
         data = decrypt.decrypt(in);
-        Log.i("Decrypted", data);
         splitFile = data.split(System.lineSeparator());
 
         if (!splitFile[0].equals(filename)) {
@@ -175,15 +172,13 @@ public class AES {
         for (int j = 0; j < entryCount; j++) {
             int entryIndex = j * 3 + 1;
             String label = String.valueOf(splitData[entryIndex]);
-            Entry entry = new Entry(splitData[entryIndex+1], splitData[entryIndex+2]);
-            try {
-                Folder folder = Objects.requireNonNull(folders.get(label));
-                folder.getEntries().add(entry);
-            } catch (Exception e) {
-                Folder folder = new Folder(label);
-                folder.getEntries().add(entry);
+            Entry entry = new Entry(splitData[entryIndex + 1], splitData[entryIndex + 2]);
+            Folder folder = folders.get(label);
+            if (folder == null) {
+                folder = new Folder(label);
                 folders.put(label, folder);
             }
+            folder.getEntries().add(entry);
         }
     }
 

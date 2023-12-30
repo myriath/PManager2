@@ -23,7 +23,7 @@ public class AsyncUtil {
         if (instance != null) return instance;
         synchronized (LOCK) {
             instance = new AsyncUtil(
-                    Executors.newSingleThreadExecutor(),
+                    Executors.newFixedThreadPool(10),
                     new UIThreadExecutor()
             );
         }

@@ -1,9 +1,13 @@
 package com.example.mitch.pmanager.util;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+
 /**
  * Constants class for holding various constants
  */
 public class Constants {
+    public static final Charset STRING_ENCODING = StandardCharsets.UTF_8;
     public static final String BACKUP_EXTENSION = ".bak";
 
     /**
@@ -29,6 +33,8 @@ public class Constants {
         String V3 = ".pm3";
         String V4 = ".pm4";
         String DB = ".db";
+        String WAL = "-wal";
+        String SHM = "-shm";
     }
 
     /**

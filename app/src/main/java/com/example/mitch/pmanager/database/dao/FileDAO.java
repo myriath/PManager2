@@ -14,10 +14,13 @@ import java.util.List;
 public interface FileDAO {
     @Query("SELECT * FROM files")
     List<FileEntity> getFiles();
+
     @Insert
     long insert(FileEntity file);
+
     @Update
     void update(FileEntity file);
+
     @Delete
     void delete(FileEntity file);
 }

@@ -1,9 +1,10 @@
 package com.example.mitch.pmanager.util;
 
-import static com.example.mitch.pmanager.util.ByteCharStringUtil.bytesToChars;
-import static com.example.mitch.pmanager.util.ByteCharStringUtil.splitByChar;
 import static com.example.mitch.pmanager.util.Constants.BACKUP_EXTENSION;
+import static com.example.mitch.pmanager.util.Constants.STRING_ENCODING;
 import static com.example.mitch.pmanager.util.Constants.Version.V3;
+import static com.example.mitch.pmanager.util.StringsUtil.bytesToChars;
+import static com.example.mitch.pmanager.util.StringsUtil.splitByChar;
 
 import androidx.annotation.NonNull;
 
@@ -22,16 +23,11 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 
 public class FileUtil {
-
-    public static Comparator<File> FILE_COMPARATOR = Comparator.comparing(File::getName);
-
     /**
      * Copies the file at source to dest in 1MB chunks
      *
@@ -132,7 +128,7 @@ public class FileUtil {
 
             PMFile pmFile = PMFile.translateV2toV3(oldFile, file, pwd);
             PasswordBank bank = PMFileToBank(pmFile);
-            if (writeFile(bank, file, file.getName().getBytes(StandardCharsets.UTF_8), pwd)) {
+            if (writeFile(bank, file, file.getName().getBytes(STRING_ENCODING), pwd)) {
                 oldFile.delete();
             }
             return PMFileToBank(pmFile);

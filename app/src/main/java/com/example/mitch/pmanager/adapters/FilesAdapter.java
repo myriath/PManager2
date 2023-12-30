@@ -1,21 +1,20 @@
 package com.example.mitch.pmanager.adapters;
 
-import static com.example.mitch.pmanager.activities.LoginActivity.IMPORT_DIR;
 import static com.example.mitch.pmanager.activities.LoginActivity.toast;
+import static com.example.mitch.pmanager.util.AsyncUtil.diskIO;
+import static com.example.mitch.pmanager.util.AsyncUtil.uiThread;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_CODE;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_FILE;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_PWD;
-import static com.example.mitch.pmanager.util.Constants.CallbackCodes.DELETE_FILE;
 import static com.example.mitch.pmanager.util.Constants.CallbackCodes.EXPORT_FILE;
 import static com.example.mitch.pmanager.util.Constants.CallbackCodes.LOAD_FILE;
-import static com.example.mitch.pmanager.util.Constants.Version.V3;
-import static com.example.mitch.pmanager.util.FileUtil.readFile;
-import static com.example.mitch.pmanager.util.FileUtil.writeFile;
+import static com.example.mitch.pmanager.util.Encryption.SHA512;
+import static com.example.mitch.pmanager.util.Encryption.compareHashes;
+import static com.example.mitch.pmanager.util.FilesUtil.getFolder;
+import static com.example.mitch.pmanager.util.FilesUtil.updateOrInsertFolder;
 import static com.example.mitch.pmanager.util.WindowUtil.getFieldChars;
 import static com.example.mitch.pmanager.util.WindowUtil.getFieldString;
 
-import android.annotation.SuppressLint;
-import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -31,32 +30,28 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.activities.LoginActivity;
-import com.example.mitch.pmanager.interfaces.CallbackListener;
-import com.example.mitch.pmanager.util.ByteCharStringUtil;
+import com.example.mitch.pmanager.database.dao.FolderDAO;
+import com.example.mitch.pmanager.database.database.FileDatabase;
+import com.example.mitch.pmanager.database.database.FolderDatabase;
+import com.example.mitch.pmanager.database.entity.FileEntity;
+import com.example.mitch.pmanager.database.entity.FolderEntity;
+import com.example.mitch.pmanager.models.EncryptedPassword;
+import com.example.mitch.pmanager.models.Folder;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.textfield.TextInputLayout;
 
-import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.Locale;
 
 public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> {
 
     /**
-     * Context for the adapter
+     * Host activity
      */
-    private final Context context;
+    private final LoginActivity activity;
     /**
      * List of files for the adapter
      */
-    private final ArrayList<File> entries = new ArrayList<>();
-    /**
-     * Callback listener for opening files
-     */
-    private final CallbackListener callback;
+    private final List<FileEntity> files;
 
     /**
      * Holds the index of the last expanded file
@@ -66,40 +61,28 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
     /**
      * Constructor
      *
-     * @param context  Context for the adapter
-     * @param root     Root directory for the files list
-     * @param callback Callback for opening a file
+     * @param activity Context, callback for the adapter
+     * @param files    List of files from the files database
      */
-    public FilesAdapter(LoginActivity context, File root, CallbackListener callback) {
-        this.context = context;
-        entries.addAll(getFiles(root));
-        this.callback = callback;
-    }
-
-    /**
-     * Gets a list of files in the given directory
-     *
-     * @param root Directory to search
-     * @return List of files in the directory
-     */
-    public static List<File> getFiles(File root) {
-        return Stream.of(root.listFiles())
-                .filter(file -> !file.isDirectory())
-                .collect(Collectors.toList());
+    public FilesAdapter(LoginActivity activity, List<FileEntity> files) {
+        this.activity = activity;
+        this.files = files;
     }
 
     /**
      * Checks if the given filename is in the list (as any extension)
      *
      * @param filename Filename to check
-     * @return True if this file exists already
+     * @return Largest duplicate value. 0 if no duplicates
      */
-    public boolean fileExists(String filename) {
-        for (int i = 0; i < entries.size(); i++) {
-            File file = entries.get(i);
-            if (ByteCharStringUtil.removeExtension(file.getName()).equals(filename)) return true;
+    public long getDuplicates(String filename) {
+        long duplicates = 1;
+        for (FileEntity entity : files) {
+            if (entity.getDisplayName().equals(filename)) {
+                duplicates++;
+            }
         }
-        return false;
+        return duplicates;
     }
 
     /**
@@ -107,10 +90,10 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
      *
      * @param file File to append
      */
-    public void add(File file) {
-        entries.add(file);
+    public void add(FileEntity file) {
+        files.add(file);
 //        notifyItemChanged(entries.size()-1);
-        notifyItemInserted(entries.size() - 1);
+        notifyItemInserted(files.size() - 1);
     }
 
     /**
@@ -118,10 +101,15 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
      *
      * @param position position of the file to remove
      */
-    private void remove(int position) {
-        entries.remove(position);
+    public void remove(int position) {
+        files.remove(position);
         if (expanded == position) expanded = -1;
         notifyItemRemoved(position);
+    }
+
+    public void remove(FileEntity entity) {
+        int position = files.indexOf(entity);
+        remove(position);
     }
 
     /**
@@ -130,8 +118,8 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
      * @param position Position of the file to replace
      * @param newFile  File to be replaced with
      */
-    private void replace(int position, File newFile) {
-        entries.set(position, newFile);
+    private void replace(int position, FileEntity newFile) {
+        files.set(position, newFile);
         if (expanded == position) expanded = -1;
         notifyItemChanged(position);
     }
@@ -161,18 +149,29 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
      */
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        File file = entries.get(position);
+        FileEntity file = files.get(position);
 
         holder.titleBar.setOnClickListener((view) -> {
             Bundle bundle = new Bundle();
+            // TODO: these changed
             bundle.putSerializable(CALLBACK_CODE, LOAD_FILE);
-            bundle.putSerializable(CALLBACK_FILE, file);
-            callback.callback(bundle);
+            bundle.putParcelable(CALLBACK_FILE, file);
+            activity.callback(bundle);
         });
 
-        holder.nameView.setText(file.getName());
+        String displayName = file.getDisplayName();
+        long duplicate = file.getDuplicateNumber();
+        if (duplicate > 1) {
+            displayName += String.format(Locale.ENGLISH, " (%d)", duplicate);
+        }
+        if (file.getSize() == 0) {
+            displayName += " (Empty)";
+        }
+        holder.nameView.setText(displayName);
 
         holder.optionsDrawer.setVisibility(holder.getAdapterPosition() == expanded ? View.VISIBLE : View.GONE);
+
+        // TODO: Change options based on empty status (i.e. file doesn't exist)
 
         holder.moreButton.setOnClickListener((view) -> {
             int old = expanded;
@@ -183,18 +182,17 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
         });
 
         holder.exportButton.setOnClickListener((view) -> {
-            final View dialogLayout = View.inflate(context, R.layout.dialog_password_only, null);
-            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(context)
+            final View dialogLayout = View.inflate(activity, R.layout.dialog_password_only, null);
+            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(activity)
                     .setView(dialogLayout)
                     .setTitle(R.string.export_file)
                     .setPositiveButton(R.string.export, (dialogInterface, i) -> {
-                        char[] pwd = getFieldChars(R.id.password, dialogLayout);
-
                         Bundle bundle = new Bundle();
+                        // TODO: These changed
                         bundle.putSerializable(CALLBACK_CODE, EXPORT_FILE);
-                        bundle.putCharArray(CALLBACK_PWD, pwd);
-                        bundle.putSerializable(CALLBACK_FILE, file);
-                        callback.callback(bundle);
+                        bundle.putParcelable(CALLBACK_PWD, new EncryptedPassword(getFieldChars(R.id.password, dialogLayout)));
+                        bundle.putParcelable(CALLBACK_FILE, file);
+                        activity.callback(bundle);
                         dialogInterface.dismiss();
                     })
                     .setNegativeButton(R.string.cancel, (dialogInterface, i) -> dialogInterface.cancel());
@@ -203,104 +201,88 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
         });
 
         holder.renameButton.setOnClickListener((view) -> {
-            final View dialogLayout = View.inflate(context, R.layout.dialog_rename, null);
-            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(context)
+            final View dialogLayout = View.inflate(activity, R.layout.dialog_rename, null);
+            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(activity)
                     .setView(dialogLayout)
                     .setTitle(R.string.rename_file)
-                    .setMessage(file.getName())
+                    .setMessage(file.getDisplayName())
                     .setPositiveButton(R.string.rename, null)
                     .setNegativeButton(R.string.cancel, (dialogInterface, i) -> dialogInterface.cancel());
             final AlertDialog dialog = builder.create();
             dialog.show();
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view1 -> {
-                String oldFilename = file.getName();
-                String newFilename = getFieldString(R.id.filename, dialogLayout) + V3.ext;
-                if (newFilename.length() < 5) {
-                    ((TextInputLayout) dialogLayout.findViewById(R.id.filename)).setError(context.getString(R.string.cannot_be_empty));
-                    return;
-                }
-                File newFile = new File(IMPORT_DIR, newFilename);
-                byte[] oldAD = oldFilename.getBytes(StandardCharsets.UTF_8);
-                byte[] newAD = newFilename.getBytes(StandardCharsets.UTF_8);
-                char[] pwd = getFieldChars(R.id.password, dialogLayout);
-                try {
-                    if (!writeFile(readFile(oldAD, pwd, file), newFile, newAD, pwd))
-                        throw new Exception();
-                    file.delete();
-                    replace(holder.getAdapterPosition(), newFile);
-                } catch (Exception e) {
-                    toast(R.string.wrong_password, context);
-                }
+                String newFilename = getFieldString(R.id.filename, dialogLayout);
+                file.setDuplicateNumber(activity.getDuplicateFileCount(file));
+                file.setDisplayName(newFilename);
+                diskIO().execute(() -> {
+                    FileDatabase.singleton(activity).fileDAO().update(file);
+                    uiThread().execute(() -> notifyItemChanged(holder.getAdapterPosition()));
+                });
                 dialog.dismiss();
             });
 
         });
 
         holder.changePasswordButton.setOnClickListener((view) -> {
-            final View dialogLayout = View.inflate(context, R.layout.dialog_change_password, null);
-            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(context)
+            final View dialogLayout = View.inflate(activity, R.layout.dialog_change_password, null);
+            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(activity)
                     .setView(dialogLayout)
                     .setTitle(R.string.change_password)
-                    .setMessage(file.getName())
+                    .setMessage(file.getDisplayName())
                     .setPositiveButton(R.string.update, null)
                     .setNegativeButton(R.string.cancel, (dialogInterface, i) -> dialogInterface.cancel());
             final AlertDialog dialog = builder.create();
             dialog.show();
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener((view1) -> {
-                char[] pwd = getFieldChars(R.id.password, dialogLayout);
-                char[] newPwd = getFieldChars(R.id.newPassword, dialogLayout);
-                if (newPwd.length == 0) {
-                    ((TextInputLayout) dialogLayout.findViewById(R.id.newPassword)).setError(context.getString(R.string.cannot_be_empty));
-                    return;
-                }
-                byte[] ad = file.getName().getBytes(StandardCharsets.UTF_8);
-                try {
-                    if (!writeFile(readFile(ad, pwd, file), file, ad, newPwd))
-                        throw new Exception();
-                } catch (Exception e) {
-                    toast(R.string.wrong_password, context);
-                }
+                EncryptedPassword oldPassword = new EncryptedPassword(getFieldChars(R.id.password, dialogLayout));
+                EncryptedPassword newPassword = new EncryptedPassword(getFieldChars(R.id.newPassword, dialogLayout));
+                diskIO().execute(() -> {
+                    FolderDatabase database = FolderDatabase.singleton(activity, file.getFilename());
+                    FolderDAO dao = database.folderDAO();
+                    List<FolderEntity> folders = dao.getFolders();
+                    try {
+                        for (FolderEntity entity : folders) {
+                            updateOrInsertFolder(getFolder(entity, oldPassword), entity, database, newPassword);
+                        }
+                    } catch (Exception e) {
+                        uiThread().execute(() -> toast(R.string.wrong_password, activity));
+                    }
+                });
                 dialog.dismiss();
             });
         });
 
         holder.deleteButton.setOnClickListener((view) -> {
-            final View dialogLayout = View.inflate(context, R.layout.dialog_password_only, null);
-            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(context)
+            final View dialogLayout = View.inflate(activity, R.layout.dialog_password_only, null);
+            MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(activity)
                     .setView(dialogLayout)
-                    .setTitle(((LoginActivity) callback).getString(R.string.delete_file, file.getName()))
+                    .setTitle(activity.getString(R.string.delete_file, file.getDisplayName()))
                     .setMessage(R.string.are_you_sure_this_cannot_be_undone)
                     .setPositiveButton(R.string.delete, (dialogInterface, i) -> {
-                        char[] pwd = getFieldChars(R.id.password, dialogLayout);
-                        byte[] ad = file.getName().getBytes(StandardCharsets.UTF_8);
-                        try {
-                            readFile(ad, pwd, file);
-                            file.delete();
-                            remove(holder.getAdapterPosition());
-                            Bundle bundle = new Bundle();
-                            bundle.putSerializable(CALLBACK_CODE, DELETE_FILE);
-                            callback.callback(bundle);
-                        } catch (Exception e) {
-                            toast(R.string.error, context);
-                        }
+                        EncryptedPassword password = new EncryptedPassword(getFieldChars(R.id.password, dialogLayout));
+                        diskIO().execute(() -> {
+                            try {
+                                FolderDatabase database = FolderDatabase.singleton(activity, file.getFilename());
+                                FolderDAO dao = database.folderDAO();
+                                for (FolderEntity entity : dao.getFolders()) {
+                                    Folder folder = getFolder(entity, password);
+                                    if (!compareHashes(entity.getLabel(), SHA512(folder.getLabel())))
+                                        throw new Exception();
+                                }
+                                file.getFile(activity).delete();
+                                FileDatabase fileDatabase = FileDatabase.singleton(activity);
+                                fileDatabase.fileDAO().delete(file);
+                                uiThread().execute(() -> activity.deleteFile(file));
+                            } catch (Exception e) {
+                                uiThread().execute(() -> toast(R.string.wrong_password, activity));
+                            }
+                        });
                         dialogInterface.dismiss();
                     })
                     .setNegativeButton(R.string.cancel, (dialogInterface, i) -> dialogInterface.cancel());
             builder.create();
             builder.show();
         });
-    }
-
-    /**
-     * Resets the adapter and re fetches file list
-     *
-     * @param root Filesystem root
-     */
-    @SuppressLint("NotifyDataSetChanged")
-    public void reset(File root) {
-        entries.clear();
-        entries.addAll(getFiles(root));
-        notifyDataSetChanged();
     }
 
     /**
@@ -321,7 +303,7 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
      */
     @Override
     public int getItemCount() {
-        return entries.size();
+        return files.size();
     }
 
     /**

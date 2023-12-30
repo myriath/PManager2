@@ -1,22 +1,22 @@
 package com.example.mitch.pmanager;
 
-import static com.example.mitch.pmanager.util.ByteCharStringUtil.bytesToChars;
-import static com.example.mitch.pmanager.util.ByteCharStringUtil.charsToBytes;
-import static com.example.mitch.pmanager.util.ByteCharStringUtil.removeExtension;
-import static com.example.mitch.pmanager.util.ByteCharStringUtil.splitByChar;
+import static com.example.mitch.pmanager.util.Constants.STRING_ENCODING;
+import static com.example.mitch.pmanager.util.StringsUtil.bytesToChars;
+import static com.example.mitch.pmanager.util.StringsUtil.charsToBytes;
+import static com.example.mitch.pmanager.util.StringsUtil.removeExtension;
+import static com.example.mitch.pmanager.util.StringsUtil.splitByChar;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Random;
 
 /**
  * Tests various utility methods from the Util class
  */
-public class ByteCharStringUtilTest {
+public class StringsUtilTest {
 
     /**
      * Performs a group of various split tests with different test strings and a random number string
@@ -74,7 +74,7 @@ public class ByteCharStringUtilTest {
      */
     public void conversionSingleTest(String testString) {
         char[] charsToBytesTest = testString.toCharArray();
-        byte[] bytesToCharsTest = testString.getBytes(StandardCharsets.UTF_8);
+        byte[] bytesToCharsTest = testString.getBytes(STRING_ENCODING);
         assertArrayEquals(bytesToCharsTest, charsToBytes(charsToBytesTest));
         assertArrayEquals(charsToBytesTest, bytesToChars(bytesToCharsTest));
     }

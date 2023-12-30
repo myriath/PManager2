@@ -2,34 +2,37 @@ package com.example.mitch.pmanager.database.entity;
 
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
-@Entity(tableName = "data")
+@Entity(tableName = "folders")
 public class FolderEntity {
     @PrimaryKey(autoGenerate = true)
     private long id;
     @ColumnInfo(name = "last_accessed")
     private long lastAccessed;
+    @ColumnInfo(name = "label")
+    private byte[] label;
+    @ColumnInfo(name = "key")
+    private byte[] encryptedKey;
     @ColumnInfo(name = "iv")
     private byte[] iv;
-    @ColumnInfo(name = "salt")
-    private byte[] salt;
     @ColumnInfo(name = "json")
     private byte[] encryptedJson;
 
-    public FolderEntity(long lastAccessed, byte[] iv, byte[] salt, byte[] encryptedJson) {
+    public FolderEntity(long id, long lastAccessed, byte[] label, byte[] encryptedKey, byte[] iv, byte[] encryptedJson) {
+        this.id = id;
         this.lastAccessed = lastAccessed;
+        this.label = label;
+        this.encryptedKey = encryptedKey;
         this.iv = iv;
-        this.salt = salt;
         this.encryptedJson = encryptedJson;
     }
 
-    public FolderEntity(long id, long lastAccessed, byte[] iv, byte[] salt, byte[] encryptedJson) {
-        this.id = id;
+    @Ignore
+    public FolderEntity(long lastAccessed, byte[] encryptedKey) {
         this.lastAccessed = lastAccessed;
-        this.iv = iv;
-        this.salt = salt;
-        this.encryptedJson = encryptedJson;
+        this.encryptedKey = encryptedKey;
     }
 
     public long getId() {
@@ -40,12 +43,16 @@ public class FolderEntity {
         return lastAccessed;
     }
 
-    public byte[] getIv() {
-        return iv;
+    public byte[] getLabel() {
+        return label;
     }
 
-    public byte[] getSalt() {
-        return salt;
+    public byte[] getEncryptedKey() {
+        return encryptedKey;
+    }
+
+    public byte[] getIv() {
+        return iv;
     }
 
     public byte[] getEncryptedJson() {
@@ -60,12 +67,16 @@ public class FolderEntity {
         this.lastAccessed = lastAccessed;
     }
 
-    public void setIv(byte[] iv) {
-        this.iv = iv;
+    public void setLabel(byte[] label) {
+        this.label = label;
     }
 
-    public void setSalt(byte[] salt) {
-        this.salt = salt;
+    public void setEncryptedKey(byte[] encryptedKey) {
+        this.encryptedKey = encryptedKey;
+    }
+
+    public void setIv(byte[] iv) {
+        this.iv = iv;
     }
 
     public void setEncryptedJson(byte[] encryptedJson) {

@@ -9,7 +9,7 @@ import androidx.room.RoomDatabase;
 import com.example.mitch.pmanager.database.dao.FileDAO;
 import com.example.mitch.pmanager.database.entity.FileEntity;
 
-@Database(entities = FileEntity.class, version = 3)
+@Database(entities = FileEntity.class, exportSchema = false, version = 4)
 public abstract class FileDatabase extends RoomDatabase {
     private static final String DB_NAME = "files_db";
     private static FileDatabase singleton;

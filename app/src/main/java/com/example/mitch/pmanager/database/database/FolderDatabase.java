@@ -6,21 +6,29 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
-import com.example.mitch.pmanager.database.dao.FileDAO;
 import com.example.mitch.pmanager.database.dao.FolderDAO;
-import com.example.mitch.pmanager.database.entity.FileEntity;
+import com.example.mitch.pmanager.database.dao.MetadataDAO;
+import com.example.mitch.pmanager.database.entity.FolderEntity;
+import com.example.mitch.pmanager.database.entity.MetadataEntity;
 
-@Database(entities = FileEntity.class, version = 3)
+import java.util.HashMap;
+
+@Database(entities = {FolderEntity.class, MetadataEntity.class}, exportSchema = false, version = 4)
 public abstract class FolderDatabase extends RoomDatabase {
-    private static FolderDatabase singleton;
+    private static final HashMap<String, FolderDatabase> singleton = new HashMap<>();
 
     public static synchronized FolderDatabase singleton(Context context, String dbName) {
-        if (singleton != null) return singleton;
-        singleton = Room.databaseBuilder(context.getApplicationContext(), FolderDatabase.class, dbName)
-                .fallbackToDestructiveMigration()
-                .build();
-        return singleton;
+        FolderDatabase database = singleton.get(dbName);
+        if (database == null) {
+            database = Room.databaseBuilder(context.getApplicationContext(), FolderDatabase.class, dbName)
+                    .fallbackToDestructiveMigration()
+                    .build();
+            singleton.put(dbName, database);
+        }
+        return database;
     }
 
     public abstract FolderDAO folderDAO();
+
+    public abstract MetadataDAO metadataDAO();
 }

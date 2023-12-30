@@ -1,19 +1,21 @@
 package com.example.mitch.pmanager.util;
 
+import static com.example.mitch.pmanager.util.Constants.STRING_ENCODING;
+
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /**
  * Utilities class for various functions used in multiple places.
  */
-public class ByteCharStringUtil {
+public class StringsUtil {
 
     /**
      * Splits a char[] into a char[][] by the given splitter char
      * Mimics the String.split() command but with a single character regex
-     * @param toSplit char[] to split
+     *
+     * @param toSplit  char[] to split
      * @param splitter char to split toSplit by
      * @return char[][]
      */
@@ -66,7 +68,7 @@ public class ByteCharStringUtil {
      */
     public static char[] bytesToChars(byte[] arr) {
         ByteBuffer byteBuffer = ByteBuffer.wrap(arr);
-        CharBuffer charBuffer = StandardCharsets.UTF_8.decode(byteBuffer);
+        CharBuffer charBuffer = STRING_ENCODING.decode(byteBuffer);
         char[] chars = Arrays.copyOfRange(charBuffer.array(), charBuffer.position(), charBuffer.limit());
         Arrays.fill(charBuffer.array(), (char) 0);
         Arrays.fill(byteBuffer.array(), (byte) 0);
@@ -80,7 +82,7 @@ public class ByteCharStringUtil {
      */
     public static byte[] charsToBytes(char[] arr) {
         CharBuffer charBuffer = CharBuffer.wrap(arr);
-        ByteBuffer byteBuffer = StandardCharsets.UTF_8.encode(charBuffer);
+        ByteBuffer byteBuffer = STRING_ENCODING.encode(charBuffer);
         byte[] bytes = Arrays.copyOfRange(byteBuffer.array(), byteBuffer.position(), byteBuffer.limit());
         Arrays.fill(charBuffer.array(), (char) 0);
         Arrays.fill(byteBuffer.array(), (byte) 0);
