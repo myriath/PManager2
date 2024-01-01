@@ -1,15 +1,16 @@
 package com.example.mitch.pmanager.adapters;
 
 import static com.example.mitch.pmanager.activities.LoginActivity.toast;
+import static com.example.mitch.pmanager.models.FileKey.generateSalt;
 import static com.example.mitch.pmanager.util.AsyncUtil.diskIO;
 import static com.example.mitch.pmanager.util.AsyncUtil.uiThread;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_CODE;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_FILE;
-import static com.example.mitch.pmanager.util.Constants.CALLBACK_PWD;
+import static com.example.mitch.pmanager.util.Constants.CALLBACK_FILEKEY;
 import static com.example.mitch.pmanager.util.Constants.CallbackCodes.EXPORT_FILE;
 import static com.example.mitch.pmanager.util.Constants.CallbackCodes.LOAD_FILE;
-import static com.example.mitch.pmanager.util.Encryption.SHA512;
-import static com.example.mitch.pmanager.util.Encryption.compareHashes;
+import static com.example.mitch.pmanager.util.HashUtil.SHA512;
+import static com.example.mitch.pmanager.util.HashUtil.compareHashes;
 import static com.example.mitch.pmanager.util.FilesUtil.getFolder;
 import static com.example.mitch.pmanager.util.FilesUtil.updateOrInsertFolder;
 import static com.example.mitch.pmanager.util.WindowUtil.getFieldChars;
@@ -35,10 +36,11 @@ import com.example.mitch.pmanager.database.database.FileDatabase;
 import com.example.mitch.pmanager.database.database.FolderDatabase;
 import com.example.mitch.pmanager.database.entity.FileEntity;
 import com.example.mitch.pmanager.database.entity.FolderEntity;
-import com.example.mitch.pmanager.models.EncryptedPassword;
+import com.example.mitch.pmanager.models.FileKey;
 import com.example.mitch.pmanager.models.Folder;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -153,7 +155,6 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
 
         holder.titleBar.setOnClickListener((view) -> {
             Bundle bundle = new Bundle();
-            // TODO: these changed
             bundle.putSerializable(CALLBACK_CODE, LOAD_FILE);
             bundle.putParcelable(CALLBACK_FILE, file);
             activity.callback(bundle);
@@ -164,14 +165,13 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
         if (duplicate > 1) {
             displayName += String.format(Locale.ENGLISH, " (%d)", duplicate);
         }
+        // TODO: Delete this, not needed anymore with metadata
         if (file.getSize() == 0) {
             displayName += " (Empty)";
         }
         holder.nameView.setText(displayName);
 
         holder.optionsDrawer.setVisibility(holder.getAdapterPosition() == expanded ? View.VISIBLE : View.GONE);
-
-        // TODO: Change options based on empty status (i.e. file doesn't exist)
 
         holder.moreButton.setOnClickListener((view) -> {
             int old = expanded;
@@ -182,15 +182,24 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
         });
 
         holder.exportButton.setOnClickListener((view) -> {
+            // TODO: UPdate with metadata
             final View dialogLayout = View.inflate(activity, R.layout.dialog_password_only, null);
             MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(activity)
                     .setView(dialogLayout)
                     .setTitle(R.string.export_file)
+                    .setMessage(file.getDisplayName())
                     .setPositiveButton(R.string.export, (dialogInterface, i) -> {
                         Bundle bundle = new Bundle();
-                        // TODO: These changed
+                        char[] password = getFieldChars(R.id.password, dialogLayout);
+                        char[] pwclone = Arrays.copyOf(password, password.length);
+                        FileKey keyToEncrypt = new FileKey(password, generateSalt());
+                        FileKey metaKey = new FileKey(pwclone, file.getMetadata().getSalt());
+                        if (!file.getMetadata().check(metaKey)) {
+                            uiThread().execute(() -> toast(R.string.wrong_password, activity));
+                            return;
+                        }
                         bundle.putSerializable(CALLBACK_CODE, EXPORT_FILE);
-                        bundle.putParcelable(CALLBACK_PWD, new EncryptedPassword(getFieldChars(R.id.password, dialogLayout)));
+                        bundle.putParcelable(CALLBACK_FILEKEY, keyToEncrypt);
                         bundle.putParcelable(CALLBACK_FILE, file);
                         activity.callback(bundle);
                         dialogInterface.dismiss();
@@ -224,6 +233,7 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
         });
 
         holder.changePasswordButton.setOnClickListener((view) -> {
+            // TODO Update with metadata
             final View dialogLayout = View.inflate(activity, R.layout.dialog_change_password, null);
             MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(activity)
                     .setView(dialogLayout)
@@ -234,15 +244,15 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
             final AlertDialog dialog = builder.create();
             dialog.show();
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener((view1) -> {
-                EncryptedPassword oldPassword = new EncryptedPassword(getFieldChars(R.id.password, dialogLayout));
-                EncryptedPassword newPassword = new EncryptedPassword(getFieldChars(R.id.newPassword, dialogLayout));
+                FileKey oldKey = new FileKey(getFieldChars(R.id.password, dialogLayout), file.getMetadata().getSalt());
+                FileKey newKey = new FileKey(getFieldChars(R.id.newPassword, dialogLayout), file.getMetadata().getSalt());
                 diskIO().execute(() -> {
                     FolderDatabase database = FolderDatabase.singleton(activity, file.getFilename());
                     FolderDAO dao = database.folderDAO();
                     List<FolderEntity> folders = dao.getFolders();
                     try {
                         for (FolderEntity entity : folders) {
-                            updateOrInsertFolder(getFolder(entity, oldPassword), entity, database, newPassword);
+                            updateOrInsertFolder(getFolder(entity, oldKey), entity, database, newKey);
                         }
                     } catch (Exception e) {
                         uiThread().execute(() -> toast(R.string.wrong_password, activity));
@@ -253,19 +263,20 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
         });
 
         holder.deleteButton.setOnClickListener((view) -> {
+            // TODO Update with metadata
             final View dialogLayout = View.inflate(activity, R.layout.dialog_password_only, null);
             MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(activity)
                     .setView(dialogLayout)
                     .setTitle(activity.getString(R.string.delete_file, file.getDisplayName()))
                     .setMessage(R.string.are_you_sure_this_cannot_be_undone)
                     .setPositiveButton(R.string.delete, (dialogInterface, i) -> {
-                        EncryptedPassword password = new EncryptedPassword(getFieldChars(R.id.password, dialogLayout));
+                        FileKey key = new FileKey(getFieldChars(R.id.password, dialogLayout), file.getMetadata().getSalt());
                         diskIO().execute(() -> {
                             try {
                                 FolderDatabase database = FolderDatabase.singleton(activity, file.getFilename());
                                 FolderDAO dao = database.folderDAO();
                                 for (FolderEntity entity : dao.getFolders()) {
-                                    Folder folder = getFolder(entity, password);
+                                    Folder folder = getFolder(entity, key);
                                     if (!compareHashes(entity.getLabel(), SHA512(folder.getLabel())))
                                         throw new Exception();
                                 }

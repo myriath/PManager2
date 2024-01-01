@@ -9,17 +9,19 @@ import androidx.room.Update;
 import com.example.mitch.pmanager.database.entity.FolderEntity;
 import com.example.mitch.pmanager.database.entity.MetadataEntity;
 
+import java.util.List;
+
 @Dao
 public interface MetadataDAO {
-    @Query("SELECT * FROM metadata WHERE id = :id")
-    MetadataEntity getMeta(long id);
+    @Query("SELECT * FROM metadata")
+    List<MetadataEntity> getMeta();
 
     @Insert
-    long insert(FolderEntity folder);
+    long insert(MetadataEntity entity);
 
     @Update
-    void update(FolderEntity folder);
+    void update(MetadataEntity entity);
 
     @Delete
-    void delete(FolderEntity folder);
+    void delete(MetadataEntity entity);
 }

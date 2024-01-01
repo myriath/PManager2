@@ -2,6 +2,7 @@ package com.example.mitch.pmanager.util;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 
 /**
  * Constants class for holding various constants
@@ -9,6 +10,37 @@ import java.nio.charset.StandardCharsets;
 public class Constants {
     public static final Charset STRING_ENCODING = StandardCharsets.UTF_8;
     public static final String BACKUP_EXTENSION = ".bak";
+
+    public interface Encryption {
+        /**
+         * Random used for generating salts
+         */
+        SecureRandom RANDOM = new SecureRandom();
+        /**
+         * The length of the salt in bytes
+         */
+        int SALT_LENGTH = 16;
+        /**
+         * IV length for GCM in bytes
+         */
+        int GCM_IV_LENGTH = 12;
+        /**
+         * Old IV length in bytes
+         */
+        int GCM_IV_LENGTH_OLD = 16;
+        /**
+         * Tag length for GCM in bytes
+         */
+        int GCM_TAG_LENGTH = 16;
+        /**
+         * Algorithm string for the AES encryption
+         */
+        String AES_GCM_NOPADDING = "AES/GCM/NoPadding";
+        /**
+         * Algorithm string for final key type
+         */
+        String AES = "AES";
+    }
 
     /**
      * Version enum for storing versions and extensions
@@ -54,7 +86,7 @@ public class Constants {
     }
 
     public static final String CALLBACK_CODE = "op";
-    public static final String CALLBACK_PWD = "pwd";
+    public static final String CALLBACK_FILEKEY = "pwd";
     public static final String CALLBACK_FILE = "file";
 
     public enum CallbackCodes {

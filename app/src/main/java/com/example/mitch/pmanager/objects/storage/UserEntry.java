@@ -1,13 +1,13 @@
 package com.example.mitch.pmanager.objects.storage;
 
-import com.example.mitch.pmanager.adapters.UserEntryEditAdapter;
-
 import java.io.Serializable;
 import java.util.Arrays;
 
 /**
  * UserEntry stores username and password as char[]
+ * Replaced with {@link com.example.mitch.pmanager.models.Entry}
  */
+@Deprecated
 public class UserEntry implements Serializable {
     /**
      * Username for the entry

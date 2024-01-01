@@ -4,21 +4,29 @@ import static com.example.mitch.pmanager.util.AsyncUtil.diskIO;
 import static com.example.mitch.pmanager.util.AsyncUtil.uiThread;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_CODE;
 import static com.example.mitch.pmanager.util.Constants.CALLBACK_FILE;
-import static com.example.mitch.pmanager.util.Constants.CALLBACK_PWD;
+import static com.example.mitch.pmanager.util.Constants.CALLBACK_FILEKEY;
 import static com.example.mitch.pmanager.util.Constants.DP16;
+import static com.example.mitch.pmanager.util.Constants.Encryption.AES_GCM_NOPADDING;
+import static com.example.mitch.pmanager.util.Constants.Encryption.GCM_IV_LENGTH_OLD;
+import static com.example.mitch.pmanager.util.Constants.Encryption.GCM_TAG_LENGTH;
+import static com.example.mitch.pmanager.util.Constants.Encryption.RANDOM;
+import static com.example.mitch.pmanager.util.Constants.Extensions.DB;
 import static com.example.mitch.pmanager.util.Constants.Extensions.V4;
 import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILE;
 import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILEDATA;
 import static com.example.mitch.pmanager.util.Constants.IntentKeys.PASSWORD;
+import static com.example.mitch.pmanager.util.Constants.STRING_ENCODING;
 import static com.example.mitch.pmanager.util.FilesUtil.exportCallback;
 import static com.example.mitch.pmanager.util.FilesUtil.getFolderCount;
 import static com.example.mitch.pmanager.util.FilesUtil.getFolders;
 import static com.example.mitch.pmanager.util.FilesUtil.importCallback;
+import static com.example.mitch.pmanager.util.FilesUtil.updateOrInsertMetadata;
 import static com.example.mitch.pmanager.util.WindowUtil.getFieldChars;
 import static com.example.mitch.pmanager.util.WindowUtil.getFieldString;
 
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.View;
@@ -34,31 +42,43 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.documentfile.provider.DocumentFile;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.adapters.FilesAdapter;
-import com.example.mitch.pmanager.background.AES;
 import com.example.mitch.pmanager.database.database.FileDatabase;
 import com.example.mitch.pmanager.database.database.FolderDatabase;
 import com.example.mitch.pmanager.database.entity.FileEntity;
+import com.example.mitch.pmanager.database.entity.MetadataEntity;
+import com.example.mitch.pmanager.deprecated.AES;
 import com.example.mitch.pmanager.dialogs.CustomDialog;
 import com.example.mitch.pmanager.interfaces.CallbackListener;
-import com.example.mitch.pmanager.models.EncryptedPassword;
 import com.example.mitch.pmanager.models.FileKey;
+import com.example.mitch.pmanager.objects.PMFile;
+import com.example.mitch.pmanager.objects.PasswordEntry;
+import com.example.mitch.pmanager.objects.storage.DomainEntry;
+import com.example.mitch.pmanager.objects.storage.PasswordBank;
+import com.example.mitch.pmanager.objects.storage.UserEntry;
 import com.example.mitch.pmanager.util.Constants;
 import com.google.android.material.textfield.TextInputLayout;
 
-import java.io.File;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
+import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * TODO: Automatically sort domains
@@ -73,14 +93,14 @@ import javax.crypto.NoSuchPaddingException;
  * server : none : nu11-SQL
  */
 public class LoginActivity extends AppCompatActivity implements CallbackListener {
-    private static File FILES_DIR = null;
-    private static File IMPORT_DIR = null;
-    private static File DB_DIR = null;
     public static final int EXIT = 2;
     private FilesAdapter filesListAdapter;
 
     private ActivityResultLauncher<String> exportFileLauncher;
     private ActivityResultLauncher<String[]> importFileLauncher;
+    private ActivityResultLauncher<String> createTestV2Launcher;
+    private ActivityResultLauncher<String> createTestPMFileLauncher;
+    private ActivityResultLauncher<String> createTestPM3Launcher;
 
     private FileKey exportFileKey;
     private FileEntity exportSrc;
@@ -92,8 +112,6 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        FILES_DIR = getFilesDir();
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
@@ -136,6 +154,24 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
                 importCallback(this)
         );
 
+        // TODO: Delete for prod
+        createTestV2Launcher = registerForActivityResult(
+                new ActivityResultContracts.CreateDocument("application/octet-stream"),
+                this::createTestV2
+        );
+
+        // TODO: Delete for prod
+        createTestPMFileLauncher = registerForActivityResult(
+                new ActivityResultContracts.CreateDocument("application/octet-stream"),
+                this::createTestPMFile
+        );
+
+        // TODO: Delete for prod
+        createTestPM3Launcher = registerForActivityResult(
+                new ActivityResultContracts.CreateDocument("application/octet-stream"),
+                this::createTestPM3
+        );
+
         findViewById(R.id.newButton).setOnClickListener((view) -> {
             CustomDialog customDialog = new CustomDialog(
                     R.layout.dialog_create_file,
@@ -148,22 +184,35 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
                             return;
                         }
                         ((TextInputLayout) dialogLayout.findViewById(R.id.filename)).setError("");
-                        if (getFieldChars(R.id.password, dialogLayout).length == 0) {
+                        char[] password = getFieldChars(R.id.password, dialogLayout);
+                        if (password.length == 0) {
                             ((TextInputLayout) dialogLayout.findViewById(R.id.password)).setError(getString(R.string.cannot_be_empty));
                             return;
                         }
 
                         final String finalFilename = filename;
                         diskIO().execute(() -> {
+                            FileKey key = new FileKey(password);
+
+                            FileDatabase fileDB = FileDatabase.singleton(this);
                             FileEntity entity = new FileEntity(finalFilename);
                             entity.setSize(0);
                             entity.setDuplicateNumber(getDuplicateFileCount(entity));
                             entity.setId(FileDatabase.singleton(this).fileDAO().insert(entity));
-                            FileDatabase.singleton(this).fileDAO().update(entity);
+                            fileDB.fileDAO().update(entity);
                             if (entity.getId() == -1) {
                                 uiThread().execute(() -> toast(R.string.error, this));
                                 return;
                             }
+                            FolderDatabase folderDB = FolderDatabase.singleton(this, entity.getId() + DB);
+                            MetadataEntity metadata = updateOrInsertMetadata(null, folderDB, 0, key);
+                            metadata.setId(folderDB.metadataDAO().insert(metadata));
+                            if (metadata.getId() == -1) {
+                                uiThread().execute(() -> toast(R.string.error, this));
+                                fileDB.fileDAO().delete(entity);
+                                return;
+                            }
+                            entity.setMetadata(metadata);
                             uiThread().execute(() -> {
                                 filesListAdapter.add(entity);
                                 checkEmptyText();
@@ -177,7 +226,7 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
 
         findViewById(R.id.importButton).setOnClickListener((view) -> importFileLauncher.launch(new String[]{"application/octet-stream"}));
 
-        findViewById(R.id.testButton).setOnClickListener((this::createTestOldFile));
+        findViewById(R.id.testButton).setOnClickListener(view -> createTestPMFileLauncher.launch("generatedtest.pm3"));
     }
 
     /**
@@ -193,18 +242,6 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
             findViewById(R.id.importButtonText).setVisibility(View.GONE);
             findViewById(R.id.emptyText).setVisibility(View.GONE);
         }
-    }
-
-    /**
-     * Gets the root file directory for the app.
-     */
-    public static File getImportDir() {
-        if (IMPORT_DIR != null) return IMPORT_DIR;
-        IMPORT_DIR = new File(FILES_DIR, "PManager");
-        if (IMPORT_DIR.exists()) return IMPORT_DIR;
-        if (!IMPORT_DIR.mkdirs()) return null;
-        System.out.println("Created PManager");
-        return IMPORT_DIR;
     }
 
     /**
@@ -244,17 +281,17 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
                         getString(R.string.open), getString(R.string.cancel),
                         (dialogInterface, i, dialogView) -> {
                             char[] password = getFieldChars(R.id.password, dialogView);
-                            FileKey fileKey = new FileKey();
-                            Arrays.fill(password, (char) 0);
+                            FileKey fileKey = new FileKey(getFieldChars(R.id.password, dialogView), file.getMetadata().getSalt());
 
                             diskIO().execute(() -> {
                                 FolderDatabase database = FolderDatabase.singleton(this, file.getFilename());
                                 try {
+                                    if (!file.getMetadata().check(fileKey)) throw new Exception();
                                     Intent intent = new Intent(this, FileOpenActivity.class);
                                     intent.putExtra(FILE.key, file);
                                     intent.putExtra(PASSWORD.key, password);
                                     intent.putExtra(FILEDATA.key, new ArrayList<>(
-                                            getFolders(database.folderDAO().getFolders(), password))
+                                            getFolders(database.folderDAO().getFolders(), fileKey))
                                     );
                                     // TODO: maybe check if this is needed through some result code?
 //                            filesListAdapter.reset(getImportDir());
@@ -271,7 +308,7 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
             }
             case EXPORT_FILE: {
                 exportSrc = args.getParcelable(CALLBACK_FILE, FileEntity.class);
-                exportPwd = args.getParcelable(CALLBACK_PWD, EncryptedPassword.class);
+                exportFileKey = args.getParcelable(CALLBACK_FILEKEY, FileKey.class);
                 exportFileLauncher.launch(exportSrc.getDisplayName() + V4);
                 break;
             }
@@ -301,8 +338,8 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
      *
      * @return EncryptedPassword to use for exporting
      */
-    public EncryptedPassword getExportPwd() {
-        return exportPwd;
+    public FileKey getExportKey() {
+        return exportFileKey;
     }
 
     /**
@@ -310,7 +347,7 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
      */
     public void clearExport() {
         exportSrc = null;
-        exportPwd = null;
+        exportFileKey = null;
     }
 
     /**
@@ -380,22 +417,130 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
 
     /**
      * TODO: Remove for release
+     * Test function for creating an example pm3 file for conversion testing
+     *
+     * @param result result from the file chooser
+     */
+    public void createTestPM3(Uri result) {
+        // TODO: test, should be similar to pmfile
+        ArrayList<DomainEntry> entries = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            ArrayList<UserEntry> entry = new ArrayList<>();
+            entry.add(new UserEntry(
+                    ("Username #" + i).toCharArray(),
+                    ("Password #" + i).toCharArray()
+            ));
+            entries.add(new DomainEntry(
+                    entry, "Domain #" + i
+            ));
+        }
+        PasswordBank bank = new PasswordBank(entries);
+
+        try (
+                OutputStream out = getContentResolver().openOutputStream(result);
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                ObjectOutputStream oos = new ObjectOutputStream(bos)
+        ) {
+            if (out == null) throw new Exception("out null");
+
+            oos.writeObject(bank);
+            oos.flush();
+
+            String name = Objects.requireNonNull(
+                    Objects.requireNonNull(DocumentFile.fromSingleUri(this, result)).getName()
+            );
+            byte[] salt = new byte[]{1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6};
+            char[] password = "test".toCharArray();
+            FileKey key = new FileKey(password, salt);
+
+            byte[] iv = new byte[GCM_IV_LENGTH_OLD];
+            RANDOM.nextBytes(iv);
+
+            Cipher cipher = Cipher.getInstance(AES_GCM_NOPADDING);
+            cipher.init(
+                    Cipher.ENCRYPT_MODE,
+                    new SecretKeySpec(key.getRawKey(), Constants.Encryption.AES),
+                    new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv)
+            );
+            cipher.updateAAD(name.getBytes(STRING_ENCODING));
+            byte[] ciphertext = cipher.doFinal(bos.toByteArray());
+
+            out.write(key.getSalt());
+            out.write(iv);
+            out.write(ciphertext);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * TODO: Remove for release
+     * Test function for creating an example pmfile file for conversion testing
+     *
+     * @param result result from the file chooser
+     */
+    public void createTestPMFile(Uri result) {
+        ArrayList<PasswordEntry> entries = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            entries.add(new PasswordEntry(
+                    ("Domain #" + i).toCharArray(),
+                    ("Username #" + i).toCharArray(),
+                    ("Password #" + i).toCharArray(),
+                    i
+            ));
+        }
+        PMFile pmFile = new PMFile(Constants.Version.V3, entries, null);
+
+        try (
+                OutputStream out = getContentResolver().openOutputStream(result);
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                ObjectOutputStream oos = new ObjectOutputStream(bos)
+        ) {
+            if (out == null) throw new Exception("out null");
+
+            oos.writeObject(pmFile);
+            oos.flush();
+
+            String name = Objects.requireNonNull(
+                    Objects.requireNonNull(DocumentFile.fromSingleUri(this, result)).getName()
+            );
+            byte[] salt = new byte[]{1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6};
+            char[] password = "test".toCharArray();
+            FileKey key = new FileKey(password, salt);
+
+            byte[] iv = new byte[GCM_IV_LENGTH_OLD];
+            RANDOM.nextBytes(iv);
+
+            Cipher cipher = Cipher.getInstance(AES_GCM_NOPADDING);
+            cipher.init(
+                    Cipher.ENCRYPT_MODE,
+                    new SecretKeySpec(key.getRawKey(), Constants.Encryption.AES),
+                    new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv)
+            );
+            cipher.updateAAD(name.getBytes(STRING_ENCODING));
+            byte[] ciphertext = cipher.doFinal(bos.toByteArray());
+
+            out.write(key.getSalt());
+            out.write(iv);
+            out.write(ciphertext);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * TODO: Remove for release
      * Unused test function for creating an example v2 file to test conversion
      *
-     * @param view view for the onclick function from a button.
+     * @param result result from the file chooser
      */
-    public void createTestOldFile(View view) {
-        File file = new File(getImportDir(), "test.jpweds");
-        File file2 = new File(getImportDir(), "test.pm3");
-        file.delete();
-        file2.delete();
-
+    public void createTestV2(Uri result) {
         ArrayList<String> dat = new ArrayList<>();
         dat.add("test.jpweds");
         for (int i = 0; i < 10; i++) {
-            dat.add(String.format("Domain%d", i));
-            dat.add(String.format("Username%d", i));
-            dat.add(String.format("Password%d", i));
+            dat.add(String.format(Locale.ENGLISH, "Domain%d", i));
+            dat.add(String.format(Locale.ENGLISH, "Username%d", i));
+            dat.add(String.format(Locale.ENGLISH, "Password%d", i));
         }
         dat.add("TestEmpty");
         dat.add("");
@@ -405,12 +550,16 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
             sb.append(str);
             sb.append('\0');
         }
-        try {
+        try (OutputStream out = getContentResolver().openOutputStream(result)){
+            if (out == null) throw new Exception("out null");
             AES f = new AES(AES.pad("test"));
-            f.encryptString(sb.toString(), file);
-            if (!f.decrypt(file).split(System.lineSeparator())[0].equals("test.jpweds")) {
-                createTestOldFile(view);
+            byte[] value = f.encryptString(sb.toString());
+            try (ByteArrayInputStream bais = new ByteArrayInputStream(value)) {
+                if (!f.decrypt(bais).split(System.lineSeparator())[0].equals("test.jpweds")) {
+                    createTestV2(result);
+                }
             }
+            out.write(value);
         } catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException e1) {
             e1.printStackTrace();
         } catch (Exception e) {

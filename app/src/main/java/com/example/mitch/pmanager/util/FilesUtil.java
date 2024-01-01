@@ -1,26 +1,20 @@
 package com.example.mitch.pmanager.util;
 
 import static com.example.mitch.pmanager.activities.LoginActivity.toast;
+import static com.example.mitch.pmanager.models.FileKey.generateSalt;
 import static com.example.mitch.pmanager.util.AsyncUtil.diskIO;
 import static com.example.mitch.pmanager.util.AsyncUtil.uiThread;
+import static com.example.mitch.pmanager.util.Constants.Encryption.GCM_IV_LENGTH;
+import static com.example.mitch.pmanager.util.Constants.Encryption.GCM_IV_LENGTH_OLD;
+import static com.example.mitch.pmanager.util.Constants.Encryption.SALT_LENGTH;
 import static com.example.mitch.pmanager.util.Constants.Extensions.SHM;
 import static com.example.mitch.pmanager.util.Constants.Extensions.V2;
 import static com.example.mitch.pmanager.util.Constants.Extensions.V3;
 import static com.example.mitch.pmanager.util.Constants.Extensions.V4;
 import static com.example.mitch.pmanager.util.Constants.Extensions.WAL;
 import static com.example.mitch.pmanager.util.Constants.STRING_ENCODING;
-import static com.example.mitch.pmanager.util.Encryption.ENCRYPT_RETURN_CIPHERTEXT;
-import static com.example.mitch.pmanager.util.Encryption.ENCRYPT_RETURN_IV;
-import static com.example.mitch.pmanager.util.Encryption.SHA512;
-import static com.example.mitch.pmanager.util.Encryption.decrypt;
-import static com.example.mitch.pmanager.util.Encryption.encrypt;
-import static com.example.mitch.pmanager.util.Encryption.exportTar;
-import static com.example.mitch.pmanager.util.Encryption.generateSalt;
-import static com.example.mitch.pmanager.util.Encryption.getAssociatedData;
-import static com.example.mitch.pmanager.util.Encryption.importFile;
-import static com.example.mitch.pmanager.util.Encryption.importTar;
-import static com.example.mitch.pmanager.util.FileUtil.PMFileToBank;
 import static com.example.mitch.pmanager.util.GsonUtil.gson;
+import static com.example.mitch.pmanager.util.HashUtil.SHA512;
 import static com.example.mitch.pmanager.util.WindowUtil.getFieldChars;
 
 import android.content.Context;
@@ -34,21 +28,33 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.activities.LoginActivity;
-import com.example.mitch.pmanager.background.AES;
+import com.example.mitch.pmanager.deprecated.AES;
 import com.example.mitch.pmanager.database.database.FileDatabase;
 import com.example.mitch.pmanager.database.database.FolderDatabase;
 import com.example.mitch.pmanager.database.entity.FileEntity;
 import com.example.mitch.pmanager.database.entity.FolderEntity;
+import com.example.mitch.pmanager.database.entity.MetadataEntity;
 import com.example.mitch.pmanager.dialogs.CustomDialog;
-import com.example.mitch.pmanager.models.EncryptedPassword;
+import com.example.mitch.pmanager.models.EncryptedArchive;
+import com.example.mitch.pmanager.models.EncryptedValue;
+import com.example.mitch.pmanager.models.FileKey;
 import com.example.mitch.pmanager.models.Folder;
 import com.example.mitch.pmanager.objects.PMFile;
+import com.example.mitch.pmanager.objects.PasswordEntry;
 import com.example.mitch.pmanager.objects.storage.DomainEntry;
 import com.example.mitch.pmanager.objects.storage.PasswordBank;
+import com.example.mitch.pmanager.objects.storage.UserEntry;
 
+import org.apache.commons.compress.archivers.ArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.compress.utils.IOUtils;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -56,11 +62,13 @@ import java.io.ObjectInputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
-import javax.crypto.spec.SecretKeySpec;
 import javax.security.auth.DestroyFailedException;
 
 /**
@@ -79,66 +87,159 @@ public class FilesUtil {
         return FolderDatabase.singleton(context, entity.getFilename()).folderDAO().getFolders().size();
     }
 
-    public static List<Folder> getFolders(List<FolderEntity> entities, EncryptedPassword password) throws Exception {
+    public static List<Folder> getFolders(List<FolderEntity> entities, FileKey key) throws Exception {
         List<Folder> folders = new ArrayList<>(entities.size());
         for (FolderEntity entity : entities) {
-            folders.add(getFolder(entity, password));
+            folders.add(getFolder(entity, key));
         }
         return folders;
     }
 
-    public static Folder getFolder(FolderEntity entity, EncryptedPassword password) throws Exception {
-        SecretKeySpec key = password.getKey(entity.getSalt());
-        byte[] data = decrypt(
-                entity.getIv(),
-                entity.getEncryptedJson(),
-                getAssociatedData(entity.getId(), entity.getLastAccessed(), entity.getLabel()),
-                key
-        );
+    public static Folder getFolder(FolderEntity entity, FileKey key) throws Exception {
+        EncryptedValue value = new EncryptedValue(entity.getEncryptedJson(), entity.getIv());
+        byte[] plaintext = key.decrypt(value, entity.getAssociatedData());
 
-        Folder folder = gson().fromJson(new String(data, STRING_ENCODING), Folder.class);
+        Folder folder = gson().fromJson(new String(plaintext, STRING_ENCODING), Folder.class);
         folder.setEntity(entity);
         return folder;
     }
 
-    public static void updateOrInsertFolder(Folder folder, @Nullable FolderEntity entity, FolderDatabase database, EncryptedPassword password) {
+    public static void updateOrInsertFolder(Folder folder, @Nullable FolderEntity entity, FolderDatabase database, FileKey key) {
         long time = System.nanoTime();
 
-        byte[] salt = generateSalt();
+        EncryptedValue folderKey = key.generateFolderKey();
 
         long id;
         if (entity == null) {
-            entity = new FolderEntity(time, salt);
+            entity = new FolderEntity(time, folderKey);
             id = database.folderDAO().insert(entity);
             entity.setId(id);
         } else {
             entity.setLastAccessed(time);
-            entity.setSalt(salt);
+            entity.setKey(folderKey);
             id = entity.getId();
         }
         if (id == -1) {
-            throw new RuntimeException("Error inserting folderEntity");
+            throw new RuntimeException("Error inserting/updating folderEntity");
             // TODO: maybe not the right error type?
         }
 
         byte[] labelHash = SHA512(folder.getLabel());
         entity.setLabel(labelHash);
 
-        byte[] associatedData = getAssociatedData(id, time, labelHash);
+        byte[] associatedData = entity.getAssociatedData();
 
-        byte[] data = gson().toJson(folder).getBytes(STRING_ENCODING);
-        SecretKeySpec key = password.getKey(salt);
-        byte[][] encrypted = encrypt(data, associatedData, key);
+        byte[] plaintext = gson().toJson(folder).getBytes(STRING_ENCODING);
+        EncryptedValue encrypted = key.encryptWithFolderKey(folderKey, plaintext, associatedData);
 
-        entity.setIv(encrypted[ENCRYPT_RETURN_IV]);
-        entity.setEncryptedJson(encrypted[ENCRYPT_RETURN_CIPHERTEXT]);
+        entity.setIv(encrypted.getIv());
+        entity.setEncryptedJson(encrypted.getCiphertext());
         database.folderDAO().update(entity);
+    }
+
+    public static MetadataEntity updateOrInsertMetadata(@Nullable MetadataEntity metadata, FolderDatabase folderDB, long folderCount, FileKey key) {
+        long time = System.nanoTime();
+
+        long id;
+        if (metadata == null) {
+            metadata = new MetadataEntity(time, folderCount, key);
+            id = folderDB.metadataDAO().insert(metadata);
+            metadata.setId(id);
+        } else {
+            metadata.update(time, folderCount, key);
+            id = metadata.getId();
+            folderDB.metadataDAO().update(metadata);
+        }
+        if (id == -1) {
+            throw new RuntimeException("Error inserting/updating folderEntity");
+            // TODO: maybe not the right error type?
+        }
+        return metadata;
     }
 
     public static void checkpoint(Context context) {
         SupportSQLiteDatabase db = FileDatabase.singleton(context).getOpenHelper().getWritableDatabase();
         db.query("PRAGMA wal_checkpoint(FULL);");
         db.query("PRAGMA wal_checkpoint(TRUNCATE);");
+    }
+
+    public static final String TAR_DB = "DB";
+    public static final String TAR_WAL = "WAL";
+    public static final String TAR_SHM = "SHM";
+    public static final String TAR_SALT = "SALT";
+
+    public static void exportTar(EncryptedValue db, EncryptedValue wal, EncryptedValue shm, byte[] salt, OutputStream out) {
+        try (
+                BufferedOutputStream bos = new BufferedOutputStream(out);
+                GZIPOutputStream gzip = new GZIPOutputStream(bos);
+                TarArchiveOutputStream tar = new TarArchiveOutputStream(gzip)
+        ) {
+            writeTar(tar, TAR_DB, db);
+            writeTar(tar, TAR_WAL, wal);
+            writeTar(tar, TAR_SHM, shm);
+
+            TarArchiveEntry entry = new TarArchiveEntry(TAR_SALT);
+            entry.setSize(SALT_LENGTH);
+            tar.putArchiveEntry(entry);
+            tar.write(salt);
+            tar.closeArchiveEntry();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static void writeTar(TarArchiveOutputStream tar, String name, EncryptedValue data) throws IOException {
+        TarArchiveEntry entry = new TarArchiveEntry(name);
+        byte[] iv = data.getIv();
+        byte[] ciphertext = data.getCiphertext();
+        entry.setSize(iv.length + ciphertext.length);
+
+        tar.putArchiveEntry(entry);
+        tar.write(iv);
+        tar.write(ciphertext);
+        tar.closeArchiveEntry();
+    }
+
+    public static EncryptedArchive importTar(InputStream in) {
+        try (
+                BufferedInputStream bis = new BufferedInputStream(in);
+                GZIPInputStream gunzip = new GZIPInputStream(bis);
+                TarArchiveInputStream tar = new TarArchiveInputStream(gunzip)
+        ) {
+            EncryptedValue db = null;
+            EncryptedValue wal = null;
+            EncryptedValue shm = null;
+            byte[] salt = new byte[SALT_LENGTH];
+
+            ArchiveEntry entry;
+            while ((entry = tar.getNextEntry()) != null) {
+                if (entry.getName().equals(TAR_SALT)) {
+                    tar.read(salt);
+                    continue;
+                }
+                byte[] iv = new byte[GCM_IV_LENGTH];
+                byte[] ciphertext = new byte[(int) (entry.getSize() - GCM_IV_LENGTH)];
+                tar.read(iv);
+                tar.read(ciphertext);
+                switch (entry.getName()) {
+                    case TAR_DB: {
+                        db = new EncryptedValue(iv, ciphertext);
+                        break;
+                    }
+                    case TAR_WAL: {
+                        wal = new EncryptedValue(iv, ciphertext);
+                        break;
+                    }
+                    case TAR_SHM: {
+                        shm = new EncryptedValue(iv, ciphertext);
+                        break;
+                    }
+                }
+            }
+            return new EncryptedArchive(db, wal, shm, salt);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static ActivityResultCallback<Uri> exportCallback(LoginActivity activity) {
@@ -154,18 +255,19 @@ public class FilesUtil {
                 }
                 byte[] ad = chosenFilename.getBytes(STRING_ENCODING);
 
-                File db = activity.getExportSrc().getFile(activity);
+                FileEntity src = activity.getExportSrc();
+                File db = src.getFile(activity);
                 File wal = new File(db.getPath() + WAL);
                 File shm = new File(db.getPath() + SHM);
-                byte[] salt = generateSalt();
-                SecretKeySpec key = activity.getExportPwd().getKey(salt);
+                FileKey key = activity.getExportKey();
                 try (OutputStream out = activity.getContentResolver().openOutputStream(result)) {
                     if (out == null) throw new RuntimeException("output stream null");
                     checkpoint(activity);
                     exportTar(
-                            new Encryption.ExportedFile(encrypt(Files.readAllBytes(db.toPath()), ad, key), salt),
-                            new Encryption.ExportedFile(encrypt(Files.readAllBytes(wal.toPath()), ad, key), salt),
-                            new Encryption.ExportedFile(encrypt(Files.readAllBytes(shm.toPath()), ad, key), salt),
+                            key.encrypt(Files.readAllBytes(db.toPath()), ad),
+                            key.encrypt(Files.readAllBytes(wal.toPath()), ad),
+                            key.encrypt(Files.readAllBytes(shm.toPath()), ad),
+                            src.getMetadata().getSalt(),
                             out
                     );
                 } catch (IOException e) {
@@ -192,7 +294,8 @@ public class FilesUtil {
                     activity.getString(R.string.open_file),
                     activity.getString(R.string.open), activity.getString(R.string.cancel),
                     (dialogInterface, i, dialogView) -> {
-                        EncryptedPassword password = new EncryptedPassword(getFieldChars(R.id.password, dialogView));
+                        char[] password = getFieldChars(R.id.password, dialogView);
+
                         diskIO().execute(() -> {
                             HashMap<String, Folder> folders = new HashMap<>();
 
@@ -202,18 +305,32 @@ public class FilesUtil {
                             if (fileID == -1) return;
                             fileEntity.setId(fileID);
                             fileEntity.setDuplicateNumber(activity.getDuplicateFileCount(fileEntity));
-                            fileEntity.setSize(getFolderCount(activity, fileEntity));
+                            fileEntity.setSize(getFolderCount(activity, fileEntity)); // TODO: probably isn't working here...
                             fileDB.fileDAO().update(fileEntity);
                             FolderDatabase folderDB = FolderDatabase.singleton(activity, fileEntity.getFilename());
 
+                            FileKey key;
+                            char[] pwclone;
                             switch (ext) {
                                 case V2:
                                     upgradeV2(activity, result, folders, fileEntity, fileDB, filename, password);
+                                    key = new FileKey(password, generateSalt());
+                                    fileEntity.setMetadata(updateOrInsertMetadata(null, folderDB, folders.size(), key));
+                                    finishUpgrade(
+                                            activity, fileEntity, folders, folderDB, key
+                                    );
                                     break;
                                 case V3:
-                                    upgradeV3(activity, result, folders, fileEntity, fileDB, filename, password);
+                                    pwclone = Arrays.copyOf(password, password.length);
+                                    upgradeV3(activity, result, folders, fileEntity, fileDB, filename, pwclone);
+                                    key = new FileKey(password, generateSalt());
+                                    fileEntity.setMetadata(updateOrInsertMetadata(null, folderDB, folders.size(), key));
+                                    finishUpgrade(
+                                            activity, fileEntity, folders, folderDB, key
+                                    );
                                     break;
-                                default:
+                                default: {
+                                    pwclone = Arrays.copyOf(password, password.length);
                                     File db = fileEntity.getFile(activity);
                                     File wal = new File(db.getPath() + WAL);
                                     File shm = new File(db.getPath() + SHM);
@@ -221,13 +338,13 @@ public class FilesUtil {
                                     byte[] data;
                                     try (InputStream in = activity.getContentResolver().openInputStream(result)) {
                                         if (in == null) throw new IOException("in is null");
-                                        Encryption.ExportedFile[] files = importTar(in);
-                                        SecretKeySpec key = password.getKey(files[0].getSalt());
-                                        data = decrypt(files[0].getIv(), files[0].getCiphertext(), ad, key);
+                                        EncryptedArchive archive = importTar(in);
+                                        key = new FileKey(pwclone, archive.getSalt());
+                                        data = key.decrypt(archive.getDb(), ad);
                                         IOUtils.copy(new ByteArrayInputStream(data), Files.newOutputStream(db.toPath()));
-                                        data = decrypt(files[1].getIv(), files[1].getCiphertext(), ad, key);
+                                        data = key.decrypt(archive.getWal(), ad);
                                         IOUtils.copy(new ByteArrayInputStream(data), Files.newOutputStream(wal.toPath()));
-                                        data = decrypt(files[2].getIv(), files[2].getCiphertext(), ad, key);
+                                        data = key.decrypt(archive.getShm(), ad);
                                         IOUtils.copy(new ByteArrayInputStream(data), Files.newOutputStream(shm.toPath()));
                                     } catch (IOException e) {
                                         throw new RuntimeException(e);
@@ -237,10 +354,15 @@ public class FilesUtil {
                                         return;
                                     }
                                     checkpoint(activity);
+
+                                    MetadataEntity meta = folderDB.metadataDAO().getMeta().get(0);
+                                    meta.update(System.nanoTime(), folderDB.folderDAO().getFolders().size(), new FileKey(password, meta.getSalt()));
+                                    folderDB.metadataDAO().update(meta);
+                                    fileEntity.setMetadata(meta);
+
                                     updateFileList(activity, fileEntity, folders);
-                                    return;
+                                }
                             }
-                            finishUpgrade(activity, fileEntity, folders, folderDB, password);
                         });
                     }, (dialogInterface, i, dialogView) -> dialogInterface.cancel()
             );
@@ -248,8 +370,8 @@ public class FilesUtil {
         };
     }
 
-    public static void finishUpgrade(LoginActivity activity, FileEntity fileEntity, HashMap<String, Folder> folders, FolderDatabase folderDB, EncryptedPassword password) {
-        writeFolders(activity, folders, folderDB, password);
+    public static void finishUpgrade(LoginActivity activity, FileEntity fileEntity, HashMap<String, Folder> folders, FolderDatabase folderDB, FileKey key) {
+        writeFolders(activity, folders, folderDB, key);
         updateFileList(activity, fileEntity, folders);
     }
 
@@ -263,16 +385,15 @@ public class FilesUtil {
      *
      * @param folders  folders to write
      * @param folderDB database to write folder to
-     * @param password EncryptedPassword to hash with
+     * @param key FileKey to encrypt with
      */
-    private static void writeFolders(LoginActivity activity, HashMap<String, Folder> folders, FolderDatabase folderDB, EncryptedPassword password) {
+    private static void writeFolders(LoginActivity activity, HashMap<String, Folder> folders, FolderDatabase folderDB, FileKey key) {
         int i = 0;
         activity.startImportBar(folders.size());
         for (String label : folders.keySet()) {
             Log.i("Writing", "File #" + ++i + " / " + folders.size());
             activity.incrementImportBar();
-            // TODO: Progress bar
-            updateOrInsertFolder(folders.get(label), null, folderDB, password);
+            updateOrInsertFolder(folders.get(label), null, folderDB, key);
         }
         activity.endImportBar();
     }
@@ -293,11 +414,11 @@ public class FilesUtil {
             Uri importUri,
             HashMap<String, Folder> folders,
             FileEntity fileEntity, FileDatabase fileDB,
-            String filename, EncryptedPassword password
+            String filename, char[] password
     ) {
         String data;
         try (InputStream in = context.getContentResolver().openInputStream(importUri)) {
-            data = AES.parse(in, filename, password.getPassword());
+            data = AES.parse(in, filename, new String(password));
         } catch (Exception e) {
             uiThread().execute(() -> toast(R.string.error, context));
             fileDB.fileDAO().delete(fileEntity);
@@ -322,25 +443,26 @@ public class FilesUtil {
             Uri result,
             HashMap<String, Folder> folders,
             FileEntity fileEntity, FileDatabase fileDB,
-            String filename, EncryptedPassword password
+            String filename, char[] password
     ) {
         byte[] ad = filename.getBytes(STRING_ENCODING);
 
-        Encryption.ExportedFile file;
+        V3EncryptedFile file;
         try (InputStream in = context.getContentResolver().openInputStream(result)) {
             if (in == null) throw new IOException("in is null");
-            file = importFile(in);
+            file = importV3File(in);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
         byte[] data;
         try {
-            SecretKeySpec key = password.getKey(file.getSalt());
-            data = decrypt(file.getIv(), file.getCiphertext(), ad, key);
+            FileKey key = new FileKey(password, file.getSalt());
+            data = key.decrypt(file.getEncrypted(), ad);
         } catch (DestroyFailedException e) {
             throw new RuntimeException(e);
         } catch (Exception e) {
             uiThread().execute(() -> toast(R.string.wrong_password, context));
+            fileDB.fileDAO().delete(fileEntity);
             return;
         }
 
@@ -365,6 +487,59 @@ public class FilesUtil {
         }
         for (DomainEntry domain : bank.getEntries()) {
             folders.put(domain.getDomain(), new Folder(domain));
+        }
+    }
+
+    /**
+     * Converts a PMFile to a password bank
+     *
+     * @param file PMFile to convert
+     * @return converted PasswordBank
+     */
+    public static PasswordBank PMFileToBank(PMFile file) {
+        PasswordBank bank = new PasswordBank();
+        for (PasswordEntry entry : file.getPasswordEntries()) {
+            String domain = String.valueOf(entry.domain);
+            bank.createDomain(domain).add(new UserEntry(entry.username, entry.password));
+        }
+        return bank;
+    }
+
+    public static V3EncryptedFile importV3File(InputStream in) {
+        byte[] salt = new byte[SALT_LENGTH];
+        byte[] iv = new byte[GCM_IV_LENGTH_OLD];
+        byte[] ciphertext;
+        try {
+            in.read(salt);
+            in.read(iv);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buf = new byte[1024];
+            int i;
+            while ((i = in.read(buf, 0, buf.length)) != -1) {
+                baos.write(buf, 0, i);
+            }
+            ciphertext = baos.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return new V3EncryptedFile(iv, salt, ciphertext);
+    }
+
+    public static class V3EncryptedFile {
+        private final EncryptedValue encrypted;
+        private final byte[] salt;
+
+        public V3EncryptedFile(byte[] iv, byte[] salt, byte[] ciphertext) {
+            this.encrypted = new EncryptedValue(ciphertext, iv);
+            this.salt = salt;
+        }
+
+        public EncryptedValue getEncrypted() {
+            return encrypted;
+        }
+
+        public byte[] getSalt() {
+            return salt;
         }
     }
 }

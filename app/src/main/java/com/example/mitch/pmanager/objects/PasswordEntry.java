@@ -4,7 +4,9 @@ import java.io.Serializable;
 
 /**
  * Data class for a stored password entry
+ * Replaced with {@link com.example.mitch.pmanager.models.Entry}
  */
+@Deprecated
 public class PasswordEntry implements Serializable {
 
     /**

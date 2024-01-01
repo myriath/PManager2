@@ -8,7 +8,9 @@ import java.util.ArrayList;
 /**
  * PasswordBank class for new file storage schema
  * New storage allows multiple entries per domain
+ * Replaced with {@link com.example.mitch.pmanager.models.Folder}
  */
+@Deprecated
 public class PasswordBank implements Serializable, Writable {
     /**
      * Hashmap of data to store

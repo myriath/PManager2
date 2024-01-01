@@ -1,8 +1,9 @@
-package com.example.mitch.pmanager.background;
+package com.example.mitch.pmanager.deprecated;
 
 import static com.example.mitch.pmanager.util.Constants.STRING_ENCODING;
 import static com.example.mitch.pmanager.util.StringsUtil.splitByChar;
 
+import com.example.mitch.pmanager.models.EncryptedValue;
 import com.example.mitch.pmanager.models.Entry;
 import com.example.mitch.pmanager.models.Folder;
 
@@ -16,8 +17,10 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.CipherOutputStream;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -61,22 +64,18 @@ public class AES {
     /**
      * Encrypts the given string into the `out` file
      * @param toEncrypt String to encrypt
-     * @param out Output file
+     * @return encrypted bytes and iv combined
      * @throws InvalidKeyException Thrown if the key is invalid (incorrect password)
      */
-    public void encryptString(String toEncrypt, File out) throws InvalidKeyException {
+    public byte[] encryptString(String toEncrypt) throws Exception {
         byte[] bytes = toEncrypt.getBytes(STRING_ENCODING);
         cipher.init(Cipher.ENCRYPT_MODE, key);
         byte[] iv = cipher.getIV();
-        try (
-                FileOutputStream fileOut = new FileOutputStream(out);
-                CipherOutputStream cipherOut = new CipherOutputStream(fileOut, cipher)
-        ) {
-            fileOut.write(iv);
-            cipherOut.write(bytes);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        byte[] ciphertext = cipher.doFinal(toEncrypt.getBytes(STRING_ENCODING));
+        byte[] combined = new byte[iv.length + ciphertext.length];
+        System.arraycopy(iv, 0, combined, 0, iv.length);
+        System.arraycopy(ciphertext, 0, combined, iv.length, ciphertext.length);
+        return combined;
     }
 
     /**

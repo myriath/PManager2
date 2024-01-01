@@ -1,7 +1,11 @@
 package com.example.mitch.pmanager.models;
 
-import static com.example.mitch.pmanager.util.Encryption.AES;
-import static com.example.mitch.pmanager.util.Encryption.RANDOM;
+import static com.example.mitch.pmanager.util.Constants.Encryption.AES;
+import static com.example.mitch.pmanager.util.Constants.Encryption.RANDOM;
+import static com.example.mitch.pmanager.util.Constants.Encryption.SALT_LENGTH;
+
+import android.os.Parcel;
+import android.os.Parcelable;
 
 import com.example.mitch.pmanager.util.KeyStoreUtil;
 
@@ -24,11 +28,12 @@ import javax.crypto.spec.SecretKeySpec;
  *
  * @author mitch
  */
-public class FileKey {
+public class FileKey implements Parcelable {
     /**
      * Stores the encrypted file key
      */
     private final EncryptedValue keyValue;
+    private final byte[] salt;
 
     /**
      * Algorithm string for the secret key generation
@@ -48,8 +53,17 @@ public class FileKey {
      *
      * @param encryptedFileKey Encrypted value that is supposed to be the file key
      */
-    public FileKey(EncryptedValue encryptedFileKey) {
+    public FileKey(EncryptedValue encryptedFileKey, byte[] salt) {
         this.keyValue = encryptedFileKey;
+        this.salt = salt;
+    }
+
+    /**
+     * Creates a file key from a password and a new salt
+     * @param password Password used for key generation. Destroyed by this
+     */
+    public FileKey(char[] password) {
+        this(password, generateSalt());
     }
 
     /**
@@ -57,10 +71,11 @@ public class FileKey {
      * The password and salt are used with PBEKeySpec to generate an AES key, which is then encrypted
      * using the application AES key
      *
-     * @param password Password used for key generation
+     * @param password Password used for key generation. Destroyed by this
      * @param salt     Salt used for key generation
      */
     public FileKey(char[] password, byte[] salt) {
+        this.salt = salt;
         try {
             SecretKeyFactory factory = SecretKeyFactory.getInstance(PBKDF2_HMAC_SHA256);
             KeySpec spec = new PBEKeySpec(password, salt, ITERATION_COUNT, KEY_LENGTH);
@@ -70,6 +85,40 @@ public class FileKey {
         } catch (Exception e) {
             throw new RuntimeException("Error generating key");
         }
+    }
+
+    protected FileKey(Parcel in) {
+        keyValue = in.readParcelable(EncryptedValue.class.getClassLoader());
+        salt = in.readBlob();
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeParcelable(keyValue, flags);
+        dest.writeBlob(salt);
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    public static final Creator<FileKey> CREATOR = new Creator<FileKey>() {
+        @Override
+        public FileKey createFromParcel(Parcel in) {
+            return new FileKey(in);
+        }
+
+        @Override
+        public FileKey[] newArray(int size) {
+            return new FileKey[size];
+        }
+    };
+
+    public static byte[] generateSalt() {
+        byte[] salt = new byte[SALT_LENGTH];
+        RANDOM.nextBytes(salt);
+        return salt;
     }
 
     /**
@@ -142,6 +191,16 @@ public class FileKey {
         return plaintext;
     }
 
+    public byte[] getRawKey() {
+        KeyStore.SecretKeyEntry applicationKey;
+        try {
+            applicationKey = KeyStoreUtil.getApplicationKey();
+            return keyValue.getDecrypted(null, applicationKey.getSecretKey());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     /**
      * Encrypts the given data with the given encrypted folder key.
      *
@@ -190,5 +249,9 @@ public class FileKey {
         Arrays.fill(entryKey, (byte) 0);
 
         return plaintext;
+    }
+
+    public byte[] getSalt() {
+        return salt;
     }
 }

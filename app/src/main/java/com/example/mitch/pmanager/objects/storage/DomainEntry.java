@@ -3,6 +3,10 @@ package com.example.mitch.pmanager.objects.storage;
 import java.io.Serializable;
 import java.util.ArrayList;
 
+/**
+ * Replaced with {@link com.example.mitch.pmanager.models.Entry}
+ */
+@Deprecated
 public class DomainEntry implements Serializable {
     private final ArrayList<UserEntry> entries;
     private final ArrayList<Boolean> shown = new ArrayList<>();

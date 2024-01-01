@@ -1,17 +1,18 @@
 package com.example.mitch.pmanager.database.entity;
 
-import static com.example.mitch.pmanager.util.Encryption.ENCRYPT_RETURN_CIPHERTEXT;
-import static com.example.mitch.pmanager.util.Encryption.ENCRYPT_RETURN_IV;
-import static com.example.mitch.pmanager.util.Encryption.encrypt;
-import static com.example.mitch.pmanager.util.Encryption.generateSalt;
-import static com.example.mitch.pmanager.util.Encryption.getMetadataPlaintext;
+import static com.example.mitch.pmanager.models.FileKey.generateSalt;
+import static com.example.mitch.pmanager.util.ByteUtil.longToBytes;
+import static com.example.mitch.pmanager.util.HashUtil.SHA512;
 
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
-import com.example.mitch.pmanager.models.EncryptedPassword;
+import com.example.mitch.pmanager.models.EncryptedValue;
+import com.example.mitch.pmanager.models.FileKey;
+
+import java.util.Arrays;
 
 // TODO: Use this
 @Entity(tableName = "metadata")
@@ -28,35 +29,53 @@ public class MetadataEntity {
     private byte[] salt;
     @ColumnInfo(name = "iv")
     private byte[] iv;
-    @ColumnInfo(name = "encrypted_check")
-    private byte[] encrypted;
+    @ColumnInfo(name = "ciphertext")
+    private byte[] ciphertext;
 
-    public MetadataEntity(long id, long lastUpdated, long folderCount, byte[] salt, byte[] iv, byte[] encrypted) {
+    public MetadataEntity(long id, long lastUpdated, long folderCount, byte[] salt, byte[] iv, byte[] ciphertext) {
         this.id = id;
         this.lastUpdated = lastUpdated;
         this.folderCount = folderCount;
         this.salt = salt;
         this.iv = iv;
-        this.encrypted = encrypted;
+        this.ciphertext = ciphertext;
     }
 
     @Ignore
-    public MetadataEntity(long lastUpdated, long folderCount, EncryptedPassword password) {
-        this.salt = generateSalt();
-        update(lastUpdated, folderCount, password);
+    public MetadataEntity(long lastUpdated, long folderCount, FileKey key) {
+        update(lastUpdated, folderCount, key);
     }
 
-    public void update(long lastUpdated, long folderCount, EncryptedPassword password) {
+    public void update(long lastUpdated, long folderCount, FileKey key) {
         this.lastUpdated = lastUpdated;
         this.folderCount = folderCount;
         this.ad = generateSalt();
+        this.salt = key.getSalt();
 
         byte[] plaintext = getMetadataPlaintext(lastUpdated, folderCount);
 
-        byte[][] encrypted = encrypt(plaintext, this.ad, password.getKey(salt));
+        EncryptedValue value = key.encrypt(plaintext, this.ad);
 
-        this.iv = encrypted[ENCRYPT_RETURN_IV];
-        this.encrypted = encrypted[ENCRYPT_RETURN_CIPHERTEXT];
+        this.iv = value.getIv();
+        this.ciphertext = value.getCiphertext();
+    }
+
+    public static byte[] getMetadataPlaintext(long time, long folderCount) {
+        byte[] preHash = new byte[Long.BYTES + Long.BYTES];
+        System.arraycopy(longToBytes(time), 0, preHash, 0, Long.BYTES);
+        System.arraycopy(longToBytes(folderCount), 0, preHash, 0, Long.BYTES);
+        return SHA512(preHash);
+    }
+
+    public boolean check(FileKey key) {
+        try {
+            return Arrays.equals(
+                    key.decrypt(new EncryptedValue(ciphertext, iv), ad),
+                    getMetadataPlaintext(lastUpdated, folderCount)
+            );
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public long getId() {
@@ -107,11 +126,11 @@ public class MetadataEntity {
         this.iv = iv;
     }
 
-    public byte[] getEncrypted() {
-        return encrypted;
+    public byte[] getCiphertext() {
+        return ciphertext;
     }
 
-    public void setEncrypted(byte[] encrypted) {
-        this.encrypted = encrypted;
+    public void setCiphertext(byte[] ciphertext) {
+        this.ciphertext = ciphertext;
     }
 }

@@ -23,6 +23,8 @@ public class FileEntity implements Parcelable {
     private long duplicateNumber;
     @Ignore
     private long size;
+    @Ignore
+    private MetadataEntity metadata;
 
     @Ignore
     public FileEntity(String displayName) {
@@ -106,5 +108,13 @@ public class FileEntity implements Parcelable {
 
     public File getFile(Context context) {
         return context.getDatabasePath(getFilename());
+    }
+
+    public MetadataEntity getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(MetadataEntity metadata) {
+        this.metadata = metadata;
     }
 }

@@ -6,7 +6,6 @@ import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILE;
 import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILEDATA;
 import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILENAME;
 import static com.example.mitch.pmanager.util.Constants.IntentKeys.PASSWORD;
-import static com.example.mitch.pmanager.util.FileUtil.writeFile;
 import static com.example.mitch.pmanager.util.WindowUtil.getFieldString;
 
 import android.os.Bundle;
@@ -152,8 +151,9 @@ public class FileOpenActivity extends AppCompatActivity {
     }
 
     private void save() {
-        if (!writeFile(bank, file, filename, password))
-            toast(getString(R.string.error_failed_to_save), this);
+        // TODO
+//        if (!writeFile(bank, file, filename, password))
+//            toast(getString(R.string.error_failed_to_save), this);
     }
 
     public static void startEditDialog(FileOpenActivity context, int position, DomainEntryAdapter adapter) {
