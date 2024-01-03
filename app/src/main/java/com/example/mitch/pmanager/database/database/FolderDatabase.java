@@ -28,6 +28,14 @@ public abstract class FolderDatabase extends RoomDatabase {
         return database;
     }
 
+    public static void destroy() {
+        for (String key : singleton.keySet()) {
+            FolderDatabase db = singleton.get(key);
+            if (db != null && db.isOpen()) db.close();
+            singleton.put(key, null);
+        }
+    }
+
     public abstract FolderDAO folderDAO();
 
     public abstract MetadataDAO metadataDAO();

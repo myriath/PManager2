@@ -1,26 +1,20 @@
 package com.example.mitch.pmanager.deprecated;
 
+import static com.example.mitch.pmanager.util.Constants.BUFFER_SIZE;
 import static com.example.mitch.pmanager.util.Constants.STRING_ENCODING;
 import static com.example.mitch.pmanager.util.StringsUtil.splitByChar;
 
-import com.example.mitch.pmanager.models.EncryptedValue;
 import com.example.mitch.pmanager.models.Entry;
 import com.example.mitch.pmanager.models.Folder;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 
-import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.CipherOutputStream;
-import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -68,7 +62,6 @@ public class AES {
      * @throws InvalidKeyException Thrown if the key is invalid (incorrect password)
      */
     public byte[] encryptString(String toEncrypt) throws Exception {
-        byte[] bytes = toEncrypt.getBytes(STRING_ENCODING);
         cipher.init(Cipher.ENCRYPT_MODE, key);
         byte[] iv = cipher.getIV();
         byte[] ciphertext = cipher.doFinal(toEncrypt.getBytes(STRING_ENCODING));
@@ -79,37 +72,6 @@ public class AES {
     }
 
     /**
-     * Decrypts a given file
-     *
-     * @param out File to decrypt
-     * @return String of the decrypted data
-     * @throws InvalidKeyException Thrown if the key is invalid (incorrect password)
-     */
-    public String decrypt(File out) throws Exception {
-        String content;
-        try (FileInputStream fileIn = new FileInputStream(out)) {
-            byte[] fileIv = new byte[16];
-            //noinspection ResultOfMethodCallIgnored
-            fileIn.read(fileIv);
-            byte[] toDecrypt = new byte[(int) (out.length() - 16)];
-            //noinspection ResultOfMethodCallIgnored
-            fileIn.read(toDecrypt);
-            cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(fileIv));
-            byte[] decrypted = cipher.doFinal(toDecrypt);
-            StringBuilder sb = new StringBuilder();
-            for (byte b : decrypted) {
-                if (b == '\0') {
-                    sb.append(System.lineSeparator());
-                } else {
-                    sb.append((char) b);
-                }
-            }
-            content = sb.toString();
-        }
-        return content;
-    }
-
-    /**
      * Updated method for new translation
      */
     public String decrypt(InputStream in) throws Exception {
@@ -117,7 +79,7 @@ public class AES {
         in.read(fileIv);
 
         int i;
-        byte[] buf = new byte[1024];
+        byte[] buf = new byte[BUFFER_SIZE];
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         while ((i = in.read(buf, 0, buf.length)) != -1) {
             baos.write(buf, 0, i);

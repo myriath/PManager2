@@ -1,19 +1,28 @@
 package com.example.mitch.pmanager.models;
 
 import static com.example.mitch.pmanager.util.Constants.Encryption.AES;
+import static com.example.mitch.pmanager.util.Constants.Encryption.AES_GCM_NOPADDING;
+import static com.example.mitch.pmanager.util.Constants.Encryption.GCM_TAG_LENGTH;
 import static com.example.mitch.pmanager.util.Constants.Encryption.RANDOM;
 import static com.example.mitch.pmanager.util.Constants.Encryption.SALT_LENGTH;
 
+import android.os.Looper;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import androidx.annotation.Nullable;
+
+import com.example.mitch.pmanager.exceptions.IllegalThreadException;
 import com.example.mitch.pmanager.util.KeyStoreUtil;
 
 import java.security.KeyStore;
 import java.security.spec.KeySpec;
 import java.util.Arrays;
 
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -49,16 +58,6 @@ public class FileKey implements Parcelable {
     public static final int KEY_LENGTH = 256;
 
     /**
-     * Creates a new file key given an encrypted file key
-     *
-     * @param encryptedFileKey Encrypted value that is supposed to be the file key
-     */
-    public FileKey(EncryptedValue encryptedFileKey, byte[] salt) {
-        this.keyValue = encryptedFileKey;
-        this.salt = salt;
-    }
-
-    /**
      * Creates a file key from a password and a new salt
      * @param password Password used for key generation. Destroyed by this
      */
@@ -75,6 +74,7 @@ public class FileKey implements Parcelable {
      * @param salt     Salt used for key generation
      */
     public FileKey(char[] password, byte[] salt) {
+        if (Looper.myLooper() == Looper.getMainLooper()) throw new IllegalThreadException();
         this.salt = salt;
         try {
             SecretKeyFactory factory = SecretKeyFactory.getInstance(PBKDF2_HMAC_SHA256);
@@ -191,11 +191,13 @@ public class FileKey implements Parcelable {
         return plaintext;
     }
 
-    public byte[] getRawKey() {
+    public SecretKey getKey() {
         KeyStore.SecretKeyEntry applicationKey;
         try {
             applicationKey = KeyStoreUtil.getApplicationKey();
-            return keyValue.getDecrypted(null, applicationKey.getSecretKey());
+            return new SecretKeySpec(
+                    keyValue.getDecrypted(null, applicationKey.getSecretKey()),
+                    AES);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -253,5 +255,19 @@ public class FileKey implements Parcelable {
 
     public byte[] getSalt() {
         return salt;
+    }
+
+    public Cipher getEncryptCipher(@Nullable byte[] ad) throws Exception {
+        Cipher cipher = Cipher.getInstance(AES_GCM_NOPADDING);
+        cipher.init(Cipher.ENCRYPT_MODE, getKey());
+        if (ad != null) cipher.updateAAD(ad);
+        return cipher;
+    }
+
+    public Cipher getDecryptCipher(byte[] ad, byte[] iv) throws Exception {
+        Cipher cipher = Cipher.getInstance(AES_GCM_NOPADDING);
+        cipher.init(Cipher.DECRYPT_MODE, getKey(), new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv));
+        if (ad != null) cipher.updateAAD(ad);
+        return cipher;
     }
 }

@@ -14,16 +14,16 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.example.mitch.pmanager.R;
-import com.example.mitch.pmanager.objects.storage.DomainEntry;
-import com.example.mitch.pmanager.objects.storage.UserEntry;
+import com.example.mitch.pmanager.models.Entry;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.nio.CharBuffer;
+import java.util.ArrayList;
 import java.util.Objects;
 
-public class UserEntryEditAdapter extends BaseAdapter {
+public class EntryEditAdapter extends BaseAdapter {
 
-    private final DomainEntry domainEntry;
+    private final ArrayList<Entry> entries;
     private final Context context;
 
     private static class ViewHolder {
@@ -33,29 +33,29 @@ public class UserEntryEditAdapter extends BaseAdapter {
         ImageView deleteButton;
     }
 
-    public UserEntryEditAdapter(DomainEntry domainEntry, Context context) {
-        this.domainEntry = domainEntry;
+    public EntryEditAdapter(ArrayList<Entry> entries, Context context) {
+        this.entries = entries;
         this.context = context;
     }
 
     public void remove(int position) {
-        domainEntry.remove(position);
+        entries.remove(position);
         notifyDataSetChanged();
     }
 
-    public void add(UserEntry entry) {
-        domainEntry.add(entry);
+    public void add(Entry entry) {
+        entries.add(entry);
         notifyDataSetChanged();
     }
 
     @Override
     public int getCount() {
-        return domainEntry.getSize();
+        return entries.size();
     }
 
     @Override
     public Object getItem(int i) {
-        return domainEntry.getEntry(i);
+        return entries.get(i);
     }
 
     @Override
@@ -66,30 +66,30 @@ public class UserEntryEditAdapter extends BaseAdapter {
     @NonNull
     @Override
     public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
-        UserEntry entry = domainEntry.getEntry(position);
+        Entry entry = entries.get(position);
         final ViewHolder viewHolder;
         if (convertView == null) {
             LayoutInflater inflater = LayoutInflater.from(context);
             convertView = inflater.inflate(R.layout.adapter_edit_entry, parent, false);
 
             viewHolder = new ViewHolder();
-            viewHolder.usernameField = (TextInputLayout) convertView.findViewById(R.id.usernameField);
-            viewHolder.passwordField = (TextInputLayout) convertView.findViewById(R.id.passwordField);
-            viewHolder.deleteButton = (ImageView) convertView.findViewById(R.id.deleteButton);
+            viewHolder.usernameField = convertView.findViewById(R.id.usernameField);
+            viewHolder.passwordField = convertView.findViewById(R.id.passwordField);
+            viewHolder.deleteButton = convertView.findViewById(R.id.deleteButton);
             convertView.setTag(viewHolder);
         } else {
             viewHolder = (ViewHolder) convertView.getTag();
         }
 
-        Objects.requireNonNull(viewHolder.usernameField.getEditText()).setText(CharBuffer.wrap(entry.getUsername()));
-        Objects.requireNonNull(viewHolder.passwordField.getEditText()).setText(CharBuffer.wrap(entry.getPassword()));
+        Objects.requireNonNull(viewHolder.usernameField.getEditText()).setText(CharBuffer.wrap(entry.getLabel()));
+        Objects.requireNonNull(viewHolder.passwordField.getEditText()).setText(CharBuffer.wrap(entry.getSecret()));
         viewHolder.id = position;
 
         viewHolder.usernameField.getEditText().setOnFocusChangeListener((view, hasFocus) -> {
             if (!hasFocus) {
                 final EditText usernameField = (EditText) view;
                 try {
-                    domainEntry.getEntry(viewHolder.id).setUsername(getFieldChars(usernameField));
+                    entries.get(viewHolder.id).setLabel(getFieldChars(usernameField));
                 } catch (IndexOutOfBoundsException ignored) {
                 }
             }
@@ -99,7 +99,7 @@ public class UserEntryEditAdapter extends BaseAdapter {
             if (!hasFocus) {
                 final EditText passwordField = (EditText) view;
                 try {
-                    domainEntry.getEntry(viewHolder.id).setPassword(getFieldChars(passwordField));
+                    entries.get(viewHolder.id).setSecret(getFieldChars(passwordField));
                 } catch (IndexOutOfBoundsException ignored) {
                 }
             }

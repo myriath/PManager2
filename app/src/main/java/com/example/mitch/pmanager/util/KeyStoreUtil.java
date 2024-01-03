@@ -1,5 +1,7 @@
 package com.example.mitch.pmanager.util;
 
+import static com.example.mitch.pmanager.util.Constants.Encryption.AES;
+
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 
@@ -10,18 +12,28 @@ import java.security.KeyStoreException;
 
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 public class KeyStoreUtil {
     private static final String ANDROID_KS = "AndroidKeyStore";
     private static final KeyStore KEY_STORE;
     public static final String APPLICATION_KEY_ALIAS = "app_key";
 
+    /**
+     * Used for unit testing where AndroidKeyStore is unavailable
+     */
+    private static byte[] customApplicationKey;
+
     static {
+        KeyStore tempKeyStore;
         try {
-            KEY_STORE = KeyStore.getInstance(ANDROID_KS);
+            tempKeyStore = KeyStore.getInstance(ANDROID_KS);
         } catch (KeyStoreException e) {
-            throw new RuntimeException(e);
+            // Skip throw if not testing, AndroidKeyStore doesn't exist in unit tests
+            if (!isTesting()) throw new IllegalStateException(e);
+            tempKeyStore = null;
         }
+        KEY_STORE = tempKeyStore;
     }
 
     /**
@@ -30,7 +42,27 @@ public class KeyStoreUtil {
     private KeyStoreUtil() {
     }
 
+    /**
+     * Checks if the app is running in a unit test
+     *
+     * @return True if this is a test
+     */
+    public static boolean isTesting() {
+        try {
+            Class.forName("com.example.mitch.pmanager.EncryptionTest");
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
+        return true;
+    }
+
+    public static void setCustomApplicationKey(byte[] key) {
+        customApplicationKey = key;
+    }
+
     public static KeyStore.SecretKeyEntry getApplicationKey() throws Exception {
+        if (isTesting())
+            return new KeyStore.SecretKeyEntry(new SecretKeySpec(customApplicationKey, AES));
         return getEntry(APPLICATION_KEY_ALIAS, null);
     }
 

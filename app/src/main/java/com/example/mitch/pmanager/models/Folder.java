@@ -1,7 +1,5 @@
 package com.example.mitch.pmanager.models;
 
-import static com.example.mitch.pmanager.util.HashUtil.SHA512;
-
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -10,7 +8,6 @@ import com.example.mitch.pmanager.objects.storage.DomainEntry;
 import com.example.mitch.pmanager.objects.storage.UserEntry;
 import com.google.gson.annotations.Expose;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 
 /**

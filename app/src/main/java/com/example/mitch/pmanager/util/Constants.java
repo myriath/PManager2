@@ -9,7 +9,6 @@ import java.security.SecureRandom;
  */
 public class Constants {
     public static final Charset STRING_ENCODING = StandardCharsets.UTF_8;
-    public static final String BACKUP_EXTENSION = ".bak";
 
     public interface Encryption {
         /**
@@ -42,19 +41,17 @@ public class Constants {
         String AES = "AES";
     }
 
+    public static final int BUFFER_SIZE = 2048;
+
     /**
      * Version enum for storing versions and extensions
      */
     @Deprecated
     public enum Version {
-        /**
-         * Used in case of no extension
-         */
-        //NULL(""),
-        V2(".jpweds"),
         V3(".pm3");
 
         public final String ext;
+
         Version(String ext) {
             this.ext = ext;
         }
@@ -69,28 +66,21 @@ public class Constants {
         String SHM = "-shm";
     }
 
-    /**
-     * Intent key string constants
-     */
-    public enum IntentKeys {
-        FILE("file"),
-        FILEDATA("filedata"),
-        FILENAME("filename"),
-        PASSWORD("password");
-
-        public final String key;
-
-        IntentKeys(String key) {
-            this.key = key;
-        }
+    public interface IntentKeys {
+        String FILE = "file";
+        String FILEDATA = "filedata";
+        String KEY = "key";
     }
 
-    public static final String CALLBACK_CODE = "op";
-    public static final String CALLBACK_FILEKEY = "pwd";
-    public static final String CALLBACK_FILE = "file";
-
     public enum CallbackCodes {
-        DELETE_FILE, LOAD_FILE, EXPORT_FILE
+        LOAD_FILE, EXPORT_FILE
+    }
+
+    public interface BundleKeys {
+        String BUNDLE_OP = "op";
+        String BUNDLE_KEY = "key";
+        String BUNDLE_FILE = "file";
+        String BUNDLE_FOLDER = "folder";
     }
 
     public static int DP16;

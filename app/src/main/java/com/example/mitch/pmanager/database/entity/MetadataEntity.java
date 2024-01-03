@@ -14,7 +14,6 @@ import com.example.mitch.pmanager.models.FileKey;
 
 import java.util.Arrays;
 
-// TODO: Use this
 @Entity(tableName = "metadata")
 public class MetadataEntity {
     @PrimaryKey(autoGenerate = true)

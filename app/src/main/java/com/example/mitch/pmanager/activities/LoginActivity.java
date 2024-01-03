@@ -2,23 +2,20 @@ package com.example.mitch.pmanager.activities;
 
 import static com.example.mitch.pmanager.util.AsyncUtil.diskIO;
 import static com.example.mitch.pmanager.util.AsyncUtil.uiThread;
-import static com.example.mitch.pmanager.util.Constants.CALLBACK_CODE;
-import static com.example.mitch.pmanager.util.Constants.CALLBACK_FILE;
-import static com.example.mitch.pmanager.util.Constants.CALLBACK_FILEKEY;
+import static com.example.mitch.pmanager.util.Constants.BundleKeys.BUNDLE_FILE;
+import static com.example.mitch.pmanager.util.Constants.BundleKeys.BUNDLE_KEY;
+import static com.example.mitch.pmanager.util.Constants.BundleKeys.BUNDLE_OP;
 import static com.example.mitch.pmanager.util.Constants.DP16;
 import static com.example.mitch.pmanager.util.Constants.Encryption.AES_GCM_NOPADDING;
 import static com.example.mitch.pmanager.util.Constants.Encryption.GCM_IV_LENGTH_OLD;
 import static com.example.mitch.pmanager.util.Constants.Encryption.GCM_TAG_LENGTH;
 import static com.example.mitch.pmanager.util.Constants.Encryption.RANDOM;
-import static com.example.mitch.pmanager.util.Constants.Extensions.DB;
 import static com.example.mitch.pmanager.util.Constants.Extensions.V4;
 import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILE;
-import static com.example.mitch.pmanager.util.Constants.IntentKeys.FILEDATA;
-import static com.example.mitch.pmanager.util.Constants.IntentKeys.PASSWORD;
+import static com.example.mitch.pmanager.util.Constants.IntentKeys.KEY;
 import static com.example.mitch.pmanager.util.Constants.STRING_ENCODING;
 import static com.example.mitch.pmanager.util.FilesUtil.exportCallback;
 import static com.example.mitch.pmanager.util.FilesUtil.getFolderCount;
-import static com.example.mitch.pmanager.util.FilesUtil.getFolders;
 import static com.example.mitch.pmanager.util.FilesUtil.importCallback;
 import static com.example.mitch.pmanager.util.FilesUtil.updateOrInsertMetadata;
 import static com.example.mitch.pmanager.util.WindowUtil.getFieldChars;
@@ -33,6 +30,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -78,7 +76,6 @@ import java.util.Objects;
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 
 /**
  * TODO: Automatically sort domains
@@ -105,9 +102,10 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
     private FileKey exportFileKey;
     private FileEntity exportSrc;
 
-    private double importProgressDiff;
-    private double importProgress;
-    private ProgressBar importBar;
+    private double progressDiff;
+    private double currentProgress;
+    private ProgressBar progressBar;
+    private TextView progressText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -117,17 +115,21 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
-//        setStatusBarColors(getResources(), getWindow());
-
         setContentView(R.layout.activity_login);
         DP16 = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, getResources().getDisplayMetrics());
 
-        importBar = findViewById(R.id.importBar);
+        progressBar = findViewById(R.id.progressBar);
+        progressText = findViewById(R.id.progressText);
 
         diskIO().execute(() -> {
             List<FileEntity> entities = FileDatabase.singleton(this).fileDAO().getFiles();
             for (FileEntity entity : entities) {
                 entity.setSize(getFolderCount(this, entity));
+                try {
+                    entity.setMetadata(FolderDatabase.singleton(this, entity.getFilename()).metadataDAO().getMetadata());
+                } catch (IndexOutOfBoundsException e) {
+                    entity.setCorrupt(true);
+                }
             }
             filesListAdapter = new FilesAdapter(this, entities);
             uiThread().execute(() -> {
@@ -204,14 +206,9 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
                                 uiThread().execute(() -> toast(R.string.error, this));
                                 return;
                             }
-                            FolderDatabase folderDB = FolderDatabase.singleton(this, entity.getId() + DB);
+                            FolderDatabase folderDB = FolderDatabase.singleton(this, entity.getFilename());
                             MetadataEntity metadata = updateOrInsertMetadata(null, folderDB, 0, key);
-                            metadata.setId(folderDB.metadataDAO().insert(metadata));
-                            if (metadata.getId() == -1) {
-                                uiThread().execute(() -> toast(R.string.error, this));
-                                fileDB.fileDAO().delete(entity);
-                                return;
-                            }
+
                             entity.setMetadata(metadata);
                             uiThread().execute(() -> {
                                 filesListAdapter.add(entity);
@@ -266,11 +263,11 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
 
     @Override
     public void callback(Bundle args) {
-        Constants.CallbackCodes code = args.getSerializable(CALLBACK_CODE, Constants.CallbackCodes.class);
+        Constants.CallbackCodes code = args.getSerializable(BUNDLE_OP, Constants.CallbackCodes.class);
 
         switch (Objects.requireNonNull(code)) {
             case LOAD_FILE: {
-                final FileEntity file = args.getParcelable(CALLBACK_FILE, FileEntity.class);
+                final FileEntity file = args.getParcelable(BUNDLE_FILE, FileEntity.class);
                 if (file == null || file.getDisplayName() == null) {
                     toast(R.string.error, this);
                     return;
@@ -280,21 +277,18 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
                         getString(R.string.open_file), file.getDisplayName(),
                         getString(R.string.open), getString(R.string.cancel),
                         (dialogInterface, i, dialogView) -> {
+                            startProgressBar(R.string.working, -1);
                             char[] password = getFieldChars(R.id.password, dialogView);
-                            FileKey fileKey = new FileKey(getFieldChars(R.id.password, dialogView), file.getMetadata().getSalt());
-
                             diskIO().execute(() -> {
-                                FolderDatabase database = FolderDatabase.singleton(this, file.getFilename());
+                                FileKey fileKey = new FileKey(password, file.getMetadata().getSalt());
                                 try {
                                     if (!file.getMetadata().check(fileKey)) throw new Exception();
                                     Intent intent = new Intent(this, FileOpenActivity.class);
-                                    intent.putExtra(FILE.key, file);
-                                    intent.putExtra(PASSWORD.key, password);
-                                    intent.putExtra(FILEDATA.key, new ArrayList<>(
-                                            getFolders(database.folderDAO().getFolders(), fileKey))
-                                    );
+                                    intent.putExtra(FILE, file);
+                                    intent.putExtra(KEY, fileKey);
                                     // TODO: maybe check if this is needed through some result code?
 //                            filesListAdapter.reset(getImportDir());
+                                    endProgressBar();
                                     startActivity(intent);
                                 } catch (Exception e) {
                                     uiThread().execute(() -> toast("Incorrect password", this));
@@ -307,8 +301,8 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
                 break;
             }
             case EXPORT_FILE: {
-                exportSrc = args.getParcelable(CALLBACK_FILE, FileEntity.class);
-                exportFileKey = args.getParcelable(CALLBACK_FILEKEY, FileKey.class);
+                exportSrc = args.getParcelable(BUNDLE_FILE, FileEntity.class);
+                exportFileKey = args.getParcelable(BUNDLE_KEY, FileKey.class);
                 exportFileLauncher.launch(exportSrc.getDisplayName() + V4);
                 break;
             }
@@ -380,16 +374,17 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
         return filesListAdapter.getDuplicates(entity.getDisplayName());
     }
 
-    /**
-     * Starts the import bar display.
-     *
-     * @param totalCount Total number of elements being imported
-     */
-    public void startImportBar(int totalCount) {
-        importProgressDiff = 100.0 / totalCount;
+    public void startProgressBar(int rString, int totalCount) {
+        progressDiff = 100.0 / totalCount;
         uiThread().execute(() -> {
-            importBar.setProgress(0);
-            findViewById(R.id.importLayout).setVisibility(View.VISIBLE);
+            progressText.setText(rString);
+            if (totalCount == -1) {
+                progressBar.setVisibility(View.INVISIBLE);
+            } else {
+                progressBar.setVisibility(View.VISIBLE);
+            }
+            progressBar.setProgress(0);
+            findViewById(R.id.progressLayout).setVisibility(View.VISIBLE);
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                     WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
         });
@@ -398,19 +393,19 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
     /**
      * Increments the import bar accordingly to how many items are being imported
      */
-    public void incrementImportBar() {
+    public void incrementProgressBar() {
         uiThread().execute(() -> {
-            importProgress += importProgressDiff;
-            importBar.setProgress((int) Math.round(importProgress));
+            currentProgress += progressDiff;
+            progressBar.setProgress((int) Math.round(currentProgress));
         });
     }
 
     /**
      * Re-enables interaction and hides the importLayout
      */
-    public void endImportBar() {
+    public void endProgressBar() {
         uiThread().execute(() -> {
-            findViewById(R.id.importLayout).setVisibility(View.GONE);
+            findViewById(R.id.progressLayout).setVisibility(View.GONE);
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
         });
     }
@@ -458,8 +453,7 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
 
             Cipher cipher = Cipher.getInstance(AES_GCM_NOPADDING);
             cipher.init(
-                    Cipher.ENCRYPT_MODE,
-                    new SecretKeySpec(key.getRawKey(), Constants.Encryption.AES),
+                    Cipher.ENCRYPT_MODE, key.getKey(),
                     new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv)
             );
             cipher.updateAAD(name.getBytes(STRING_ENCODING));
@@ -513,8 +507,7 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
 
             Cipher cipher = Cipher.getInstance(AES_GCM_NOPADDING);
             cipher.init(
-                    Cipher.ENCRYPT_MODE,
-                    new SecretKeySpec(key.getRawKey(), Constants.Encryption.AES),
+                    Cipher.ENCRYPT_MODE, key.getKey(),
                     new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv)
             );
             cipher.updateAAD(name.getBytes(STRING_ENCODING));

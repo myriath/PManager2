@@ -1,7 +1,6 @@
 package com.example.mitch.pmanager.models;
 
 import static com.example.mitch.pmanager.util.Constants.Encryption.AES_GCM_NOPADDING;
-import static com.example.mitch.pmanager.util.Constants.Encryption.GCM_IV_LENGTH;
 import static com.example.mitch.pmanager.util.Constants.Encryption.GCM_TAG_LENGTH;
 
 import android.os.Parcel;
@@ -55,10 +54,29 @@ public class EncryptedValue implements Parcelable {
         }
     }
 
+//    public static byte[] encryptStream(InputStream in, OutputStream out, byte[] associatedData, SecretKey key) {
+//        try {
+//            final Cipher cipher = Cipher.getInstance(AES_GCM_NOPADDING);
+//            cipher.init(Cipher.ENCRYPT_MODE, key);
+//            if (associatedData != null) cipher.updateAAD(associatedData);
+//            byte[] buff = new byte[BUFFER_SIZE];
+//            int read;
+//            while ((read = in.read(buff)) != -1) {
+//                out.write(cipher.update(buff, 0, read));
+//            }
+//            out.write(cipher.doFinal());
+//            return cipher.getIV();
+//        } catch (NoSuchPaddingException | IllegalBlockSizeException | NoSuchAlgorithmException |
+//                 IOException | BadPaddingException | InvalidKeyException e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
+
     /**
      * Generic constructor from existing data
+     *
      * @param ciphertext Ciphertext
-     * @param iv IV
+     * @param iv         IV
      */
     public EncryptedValue(byte[] ciphertext, byte[] iv) {
         this.ciphertext = ciphertext;

@@ -38,6 +38,17 @@ public class Entry implements Parcelable {
     @Expose
     private char[] secret;
 
+    public Entry(int type) {
+        this.type = type;
+        switch (type) {
+            case Types.BASIC: {
+                this.label = new char[0];
+                this.secret = new char[0];
+                break;
+            }
+        }
+    }
+
     /**
      * Constructs a BASIC entry given a label and secret
      *

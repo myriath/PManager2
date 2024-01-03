@@ -14,20 +14,19 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mitch.pmanager.R;
 import com.example.mitch.pmanager.activities.FileOpenActivity;
-import com.example.mitch.pmanager.dialogs.EditDomainDialog;
 import com.example.mitch.pmanager.interfaces.CallbackListener;
-import com.example.mitch.pmanager.objects.storage.DomainEntry;
+import com.example.mitch.pmanager.models.Folder;
 
 import java.util.ArrayList;
 
-public class DomainEntryAdapter extends RecyclerView.Adapter<DomainEntryAdapter.ViewHolder> {
+public class FolderAdapter extends RecyclerView.Adapter<FolderAdapter.ViewHolder> {
 
     private final Context context;
-    private final ArrayList<DomainEntry> entries;
+    private final ArrayList<Folder> entries;
     private final CallbackListener callbackListener;
     private int expanded = -1;
 
-    public DomainEntryAdapter(Context context, ArrayList<DomainEntry> entries, CallbackListener callbackListener) {
+    public FolderAdapter(Context context, ArrayList<Folder> entries, CallbackListener callbackListener) {
         this.context = context;
         this.entries = entries;
         this.callbackListener = callbackListener;
@@ -38,12 +37,12 @@ public class DomainEntryAdapter extends RecyclerView.Adapter<DomainEntryAdapter.
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.adapter_domain_entry, parent, false);
-        return new DomainEntryAdapter.ViewHolder(view);
+        return new FolderAdapter.ViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        DomainEntry entry = entries.get(position);
+        Folder entry = entries.get(position);
 
         if (entries.get(holder.getAdapterPosition()).getEntries().size() == 0) {
             holder.moreButton.setVisibility(View.GONE);
@@ -54,7 +53,7 @@ public class DomainEntryAdapter extends RecyclerView.Adapter<DomainEntryAdapter.
         }
 
         holder.passwordList.setVisibility(expanded == holder.getAdapterPosition() ? View.VISIBLE : View.GONE);
-        holder.domainView.setText(entry.getDomain());
+        holder.domainView.setText(entry.getLabel());
 
         holder.editButton.setOnClickListener(view -> FileOpenActivity.startEditDialog((FileOpenActivity) context, position, this));
 
@@ -73,7 +72,7 @@ public class DomainEntryAdapter extends RecyclerView.Adapter<DomainEntryAdapter.
         });
 
         if (holder.passwordList.getVisibility() == View.VISIBLE) {
-            UserEntryAdapter adapter = new UserEntryAdapter(context, entry);
+            EntryAdapter adapter = new EntryAdapter(context, entry);
             holder.passwordList.setItemAnimator(null); // TODO: create animator
             holder.passwordList.setLayoutManager(new LinearLayoutManager(context));
             holder.passwordList.setAdapter(adapter);

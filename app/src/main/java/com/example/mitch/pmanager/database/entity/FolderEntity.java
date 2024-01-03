@@ -1,8 +1,10 @@
 package com.example.mitch.pmanager.database.entity;
 
 import static com.example.mitch.pmanager.util.ByteUtil.longToBytes;
-import static com.example.mitch.pmanager.util.HashUtil.SHA512;
 import static com.example.mitch.pmanager.util.HashUtil.SHA_512_BYTES;
+
+import android.os.Parcel;
+import android.os.Parcelable;
 
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
@@ -12,7 +14,7 @@ import androidx.room.PrimaryKey;
 import com.example.mitch.pmanager.models.EncryptedValue;
 
 @Entity(tableName = "folders")
-public class FolderEntity {
+public class FolderEntity implements Parcelable {
     @PrimaryKey(autoGenerate = true)
     private long id;
     @ColumnInfo(name = "last_accessed")
@@ -44,6 +46,45 @@ public class FolderEntity {
         this.keyIv = key.getIv();
         this.keyCiphertext = key.getCiphertext();
     }
+
+    @Ignore
+    protected FolderEntity(Parcel in) {
+        id = in.readLong();
+        lastAccessed = in.readLong();
+        label = in.readBlob();
+        keyIv = in.readBlob();
+        keyCiphertext = in.readBlob();
+        iv = in.readBlob();
+        encryptedJson = in.readBlob();
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeLong(id);
+        dest.writeLong(lastAccessed);
+        dest.writeBlob(label);
+        dest.writeBlob(keyIv);
+        dest.writeBlob(keyCiphertext);
+        dest.writeBlob(iv);
+        dest.writeBlob(encryptedJson);
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    public static final Creator<FolderEntity> CREATOR = new Creator<FolderEntity>() {
+        @Override
+        public FolderEntity createFromParcel(Parcel in) {
+            return new FolderEntity(in);
+        }
+
+        @Override
+        public FolderEntity[] newArray(int size) {
+            return new FolderEntity[size];
+        }
+    };
 
     public byte[] getAssociatedData() {
         byte[] associatedData = new byte[Long.BYTES + Long.BYTES + SHA_512_BYTES];

@@ -1,5 +1,7 @@
 package com.example.mitch.pmanager.dialogs;
 
+import static com.example.mitch.pmanager.models.Entry.Types.BASIC;
+
 import android.app.Dialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -14,24 +16,27 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.FragmentManager;
 
 import com.example.mitch.pmanager.R;
-import com.example.mitch.pmanager.adapters.UserEntryEditAdapter;
+import com.example.mitch.pmanager.adapters.EntryEditAdapter;
 import com.example.mitch.pmanager.interfaces.CallbackListener;
-import com.example.mitch.pmanager.objects.storage.DomainEntry;
-import com.example.mitch.pmanager.objects.storage.UserEntry;
+import com.example.mitch.pmanager.models.Entry;
+import com.example.mitch.pmanager.models.Folder;
 import com.google.android.material.appbar.MaterialToolbar;
 
-public class EditDomainDialog extends DialogFragment {
+import java.util.ArrayList;
+import java.util.Arrays;
+
+public class EditFolderDialog extends DialogFragment {
 
     public static final String DIALOG_TAG = "PManager.EditDomainDialog";
 
     private final ViewHolder viewHolder;
-    private final DomainEntry entry;
+    private final Folder folder;
     private final CallbackListener callbackListener;
-    private DomainEntry tempEntries;
+    private ArrayList<Entry> tempEntries;
 
-    public EditDomainDialog(DomainEntry entry, CallbackListener callbackListener) {
+    public EditFolderDialog(Folder folder, CallbackListener callbackListener) {
         viewHolder = new ViewHolder();
-        this.entry = entry;
+        this.folder = folder;
         this.callbackListener = callbackListener;
     }
 
@@ -72,11 +77,21 @@ public class EditDomainDialog extends DialogFragment {
         viewHolder.toolbar = view.findViewById(R.id.toolbar);
         viewHolder.entriesList = view.findViewById(R.id.entryList);
 
-        tempEntries = new DomainEntry(entry);
-        if (tempEntries.getSize() == 0) tempEntries.add(new UserEntry());
-        viewHolder.entriesList.setAdapter(new UserEntryEditAdapter(tempEntries, requireContext()));
+        tempEntries = cloneEntries(folder.getEntries());
+        if (tempEntries.size() == 0) tempEntries.add(new Entry(BASIC));
+        viewHolder.entriesList.setAdapter(new EntryEditAdapter(tempEntries, requireContext()));
 
         return view;
+    }
+
+    public ArrayList<Entry> cloneEntries(ArrayList<Entry> entries) {
+        ArrayList<Entry> cloned = new ArrayList<>();
+        for (Entry entry : entries) {
+            char[] label = Arrays.copyOf(entry.getLabel(), entry.getLabel().length);
+            char[] secret = Arrays.copyOf(entry.getSecret(), entry.getSecret().length);
+            cloned.add(new Entry(label, secret));
+        }
+        return cloned;
     }
 
     @Override
@@ -84,17 +99,16 @@ public class EditDomainDialog extends DialogFragment {
         super.onViewCreated(view, savedInstanceState);
 
         viewHolder.toolbar.setNavigationOnClickListener(view1 -> dismiss());
-        viewHolder.toolbar.inflateMenu(R.menu.menu_edit_domain_dialog);
-        viewHolder.toolbar.setTitle(getString(R.string.editing_domain, entry.getDomain()));
+        viewHolder.toolbar.inflateMenu(R.menu.menu_edit_folder_dialog);
+        viewHolder.toolbar.setTitle(getString(R.string.editing_folder, folder.getLabel()));
         viewHolder.toolbar.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
             if (id == R.id.newEntry) {
-                ((UserEntryEditAdapter) viewHolder.entriesList.getAdapter()).add(new UserEntry());
+                ((EntryEditAdapter) viewHolder.entriesList.getAdapter()).add(new Entry(BASIC));
             } else if (id == R.id.save) {
                 // TODO: save
-                entry.destroy();
-                entry.clone(tempEntries);
-                tempEntries.destroy();
+                destroyEntries(folder.getEntries());
+                folder.setEntries(tempEntries);
                 tempEntries = null;
                 callbackListener.callback(null);
                 dismiss();
@@ -105,4 +119,16 @@ public class EditDomainDialog extends DialogFragment {
         });
     }
 
+    public void destroyEntries(ArrayList<Entry> entries) {
+        for (Entry entry : entries) {
+            switch (entry.getType()) {
+                case BASIC: {
+                    Arrays.fill(entry.getLabel(), (char) 0);
+                    Arrays.fill(entry.getSecret(), (char) 0);
+                    break;
+                }
+            }
+        }
+        entries.clear();
+    }
 }

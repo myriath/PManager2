@@ -1,8 +1,10 @@
 package com.example.mitch.pmanager.util;
 
+import android.os.Looper;
 import android.view.View;
 import android.widget.EditText;
 
+import com.example.mitch.pmanager.exceptions.IllegalThreadException;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.util.Objects;
@@ -40,6 +42,7 @@ public class WindowUtil {
      * @return char[] of the contents.
      */
     public static char[] getFieldChars(int viewId, View view) {
+        if (Looper.myLooper() != Looper.getMainLooper()) throw new IllegalThreadException();
         TextInputLayout field = view.findViewById(viewId);
         return getFieldChars(field.getEditText());
     }

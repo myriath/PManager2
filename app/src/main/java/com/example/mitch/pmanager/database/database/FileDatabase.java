@@ -22,5 +22,10 @@ public abstract class FileDatabase extends RoomDatabase {
         return singleton;
     }
 
+    public static void destroy() {
+        if (singleton != null && singleton.isOpen()) singleton.close();
+        singleton = null;
+    }
+
     public abstract FileDAO fileDAO();
 }

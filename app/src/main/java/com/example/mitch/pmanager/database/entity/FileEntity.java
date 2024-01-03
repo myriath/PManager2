@@ -25,6 +25,8 @@ public class FileEntity implements Parcelable {
     private long size;
     @Ignore
     private MetadataEntity metadata;
+    @Ignore
+    private boolean corrupt = false;
 
     @Ignore
     public FileEntity(String displayName) {
@@ -116,5 +118,13 @@ public class FileEntity implements Parcelable {
 
     public void setMetadata(MetadataEntity metadata) {
         this.metadata = metadata;
+    }
+
+    public boolean isCorrupt() {
+        return corrupt;
+    }
+
+    public void setCorrupt(boolean corrupt) {
+        this.corrupt = corrupt;
     }
 }
