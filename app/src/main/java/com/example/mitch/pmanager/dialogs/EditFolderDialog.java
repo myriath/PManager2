@@ -1,6 +1,8 @@
 package com.example.mitch.pmanager.dialogs;
 
 import static com.example.mitch.pmanager.models.Entry.Types.BASIC;
+import static com.example.mitch.pmanager.util.Constants.BundleKeys.BUNDLE_FOLDER;
+import static com.example.mitch.pmanager.util.WindowUtil.getFieldChars;
 
 import android.app.Dialog;
 import android.os.Bundle;
@@ -107,27 +109,23 @@ public class EditFolderDialog extends DialogFragment {
                 ((EntryEditAdapter) viewHolder.entriesList.getAdapter()).add(new Entry(BASIC));
             } else if (id == R.id.save) {
                 // TODO: Entry character arrays are being filled with 0s for no fucking reason wtf
-                folder.setEntries(tempEntries);
+                int children = viewHolder.entriesList.getChildCount();
+                for (int i = 0; i < children; i++) {
+                    View child = viewHolder.entriesList.getChildAt(i);
+                    EntryEditAdapter.ViewHolder holder = new EntryEditAdapter.ViewHolder(child);
+                    tempEntries.get(i).setLabel(getFieldChars(holder.usernameField.getEditText(), false));
+                    tempEntries.get(i).setSecret(getFieldChars(holder.passwordField.getEditText(), false));
+                }
+
+                Bundle bundle = new Bundle();
+                bundle.putParcelableArrayList(BUNDLE_FOLDER, tempEntries);
 //                tempEntries = null;
-                callbackListener.callback(null);
                 dismiss();
+                callbackListener.callback(bundle);
             } else {
                 return false;
             }
             return true;
         });
-    }
-
-    public void destroyEntries(ArrayList<Entry> entries) {
-        for (Entry entry : entries) {
-            switch (entry.getType()) {
-                case BASIC: {
-                    Arrays.fill(entry.getLabel(), (char) 0);
-                    Arrays.fill(entry.getSecret(), (char) 0);
-                    break;
-                }
-            }
-        }
-        entries.clear();
     }
 }

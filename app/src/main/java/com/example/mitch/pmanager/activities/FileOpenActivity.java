@@ -27,9 +27,12 @@ import com.example.mitch.pmanager.database.database.FolderDatabase;
 import com.example.mitch.pmanager.database.entity.FileEntity;
 import com.example.mitch.pmanager.dialogs.CustomDialog;
 import com.example.mitch.pmanager.dialogs.EditFolderDialog;
+import com.example.mitch.pmanager.models.Entry;
 import com.example.mitch.pmanager.models.FileKey;
 import com.example.mitch.pmanager.models.Folder;
 import com.example.mitch.pmanager.models.FolderStore;
+
+import java.util.ArrayList;
 
 /**
  * Activity for the main screen
@@ -39,6 +42,41 @@ public class FileOpenActivity extends AppCompatActivity {
      * Folder storage for this file
      */
     FolderStore folders;
+
+    public static void startEditDialog(FileOpenActivity activity, int position, FolderAdapter adapter) {
+        Folder folder = activity.folders.getFolder(position);
+        EditFolderDialog dialog = new EditFolderDialog(folder, (bundle) -> {
+            ArrayList<Entry> entries = bundle.getParcelableArrayList(BUNDLE_FOLDER, Entry.class);
+            folder.setEntries(entries);
+            activity.save(folder);
+            adapter.notifyItemChanged(position);
+        });
+        dialog.show(activity.getSupportFragmentManager());
+    }
+
+    public void save(Folder folder) {
+        diskIO().execute(() -> folders.update(folder));
+    }
+
+    /**
+     * Goes back to login screen on changing apps
+     */
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        setResult(LoginActivity.EXIT);
+        finish();
+    }
+
+    /**
+     * Goes back to login screen on changing apps
+     */
+    @Override
+    protected void onPause() {
+        super.onPause();
+        setResult(LoginActivity.EXIT);
+        finish();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -93,64 +131,29 @@ public class FileOpenActivity extends AppCompatActivity {
                             R.layout.dialog_create_domain,
                             getString(R.string.create_domain),
                             getString(R.string.create), getString(R.string.cancel),
-                            (dialogInterface, i, dialogView) -> {
-                                diskIO().execute(() -> {
-                                    int index = folders.createFolder(getFieldString(R.id.domain, dialogView));
-                                    if (index == -1) {
-                                        dialogInterface.cancel();
-                                        uiThread().execute(() -> toast(R.string.error_folder_exists, this));
-                                        return;
-                                    }
-                                    uiThread().execute(() -> {
-                                        adapter.notifyItemInserted(index);
-                                        findViewById(R.id.newButtonText).setVisibility(View.GONE);
-                                        findViewById(R.id.searchButtonText).setVisibility(View.GONE);
-                                        findViewById(R.id.emptyText).setVisibility(View.GONE);
-                                        dialogInterface.dismiss();
+                            (dialogInterface, i, dialogView) -> diskIO().execute(() -> {
+                                int index = folders.createFolder(getFieldString(R.id.domain, dialogView));
+                                if (index == -1) {
+                                    dialogInterface.cancel();
+                                    uiThread().execute(() -> toast(R.string.error_folder_exists, this));
+                                    return;
+                                }
+                                uiThread().execute(() -> {
+                                    adapter.notifyItemInserted(index);
+                                    findViewById(R.id.newButtonText).setVisibility(View.GONE);
+                                    findViewById(R.id.searchButtonText).setVisibility(View.GONE);
+                                    findViewById(R.id.emptyText).setVisibility(View.GONE);
+                                    dialogInterface.dismiss();
 //                                    save(folders.getFolder(index));
 
-                                        startEditDialog(this, index, adapter);
-                                    });
+                                    startEditDialog(this, index, adapter);
                                 });
-                            }, (dialogInterface, i, dialogView) -> dialogInterface.cancel()
+                            }), (dialogInterface, i, dialogView) -> dialogInterface.cancel()
                     );
                     customDialog.show(getSupportFragmentManager());
                 });
             });
         });
-    }
-
-    public void save(Folder folder) {
-        diskIO().execute(() -> folders.update(folder));
-    }
-
-    /**
-     * Goes back to login screen on changing apps
-     */
-    @Override
-    protected void onUserLeaveHint() {
-        super.onUserLeaveHint();
-        setResult(LoginActivity.EXIT);
-        finish();
-    }
-
-    /**
-     * Goes back to login screen on changing apps
-     */
-    @Override
-    protected void onPause() {
-        super.onPause();
-        setResult(LoginActivity.EXIT);
-        finish();
-    }
-
-    public static void startEditDialog(FileOpenActivity activity, int position, FolderAdapter adapter) {
-        Folder folder = activity.folders.getFolder(position);
-        EditFolderDialog dialog = new EditFolderDialog(folder, (unused) -> {
-            activity.save(folder);
-            adapter.notifyItemChanged(position);
-        });
-        dialog.show(activity.getSupportFragmentManager());
     }
 
 }

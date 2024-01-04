@@ -16,7 +16,6 @@ import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 
 import java.lang.reflect.Type;
-import java.util.Arrays;
 
 /**
  * Utility class for working with Gson
@@ -57,14 +56,12 @@ public class GsonUtil {
     private static class CharArrayTypeAdapter implements JsonSerializer<char[]>, JsonDeserializer<char[]> {
         @Override
         public char[] deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-            return bytesToChars(Base64.decode(json.getAsString(), Base64.NO_WRAP));
+            return bytesToChars(Base64.decode(json.getAsString(), Base64.NO_WRAP), true);
         }
 
         @Override
         public JsonElement serialize(char[] src, Type typeOfSrc, JsonSerializationContext context) {
-            JsonPrimitive primitive = new JsonPrimitive(Base64.encodeToString(charsToBytes(src), Base64.NO_WRAP));
-            Arrays.fill(src, (char) 0);
-            return primitive;
+            return new JsonPrimitive(Base64.encodeToString(charsToBytes(src, false), Base64.NO_WRAP));
         }
     }
 }

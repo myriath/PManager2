@@ -63,28 +63,32 @@ public class StringsUtil {
 
     /**
      * Converts an array of bytes to an array of chars
-     * @param arr bytes to convert
+     *
+     * @param arr   bytes to convert
+     * @param clear whether or not to clear arr after conversion
      * @return converted chars
      */
-    public static char[] bytesToChars(byte[] arr) {
+    public static char[] bytesToChars(byte[] arr, boolean clear) {
         ByteBuffer byteBuffer = ByteBuffer.wrap(arr);
         CharBuffer charBuffer = STRING_ENCODING.decode(byteBuffer);
         char[] chars = Arrays.copyOfRange(charBuffer.array(), charBuffer.position(), charBuffer.limit());
         Arrays.fill(charBuffer.array(), (char) 0);
-        Arrays.fill(byteBuffer.array(), (byte) 0);
+        if (clear) Arrays.fill(byteBuffer.array(), (byte) 0);
         return chars;
     }
 
     /**
      * Converts a char[] to a byte[]
-     * @param arr array to convert
+     *
+     * @param arr   array to convert
+     * @param clear whether or not to clear arr after conversion
      * @return converted byte[]
      */
-    public static byte[] charsToBytes(char[] arr) {
+    public static byte[] charsToBytes(char[] arr, boolean clear) {
         CharBuffer charBuffer = CharBuffer.wrap(arr);
         ByteBuffer byteBuffer = STRING_ENCODING.encode(charBuffer);
         byte[] bytes = Arrays.copyOfRange(byteBuffer.array(), byteBuffer.position(), byteBuffer.limit());
-        Arrays.fill(charBuffer.array(), (char) 0);
+        if (clear) Arrays.fill(charBuffer.array(), (char) 0);
         Arrays.fill(byteBuffer.array(), (byte) 0);
         return bytes;
     }

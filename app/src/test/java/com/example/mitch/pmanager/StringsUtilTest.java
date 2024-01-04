@@ -75,8 +75,8 @@ public class StringsUtilTest {
     public void conversionSingleTest(String testString) {
         char[] charsToBytesTest = testString.toCharArray();
         byte[] bytesToCharsTest = testString.getBytes(STRING_ENCODING);
-        assertArrayEquals(bytesToCharsTest, charsToBytes(charsToBytesTest));
-        assertArrayEquals(charsToBytesTest, bytesToChars(bytesToCharsTest));
+        assertArrayEquals(bytesToCharsTest, charsToBytes(charsToBytesTest, false));
+        assertArrayEquals(charsToBytesTest, bytesToChars(bytesToCharsTest, false));
     }
 
     @Test

@@ -12,6 +12,7 @@ import com.google.gson.annotations.Expose;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Folder data object.
@@ -116,17 +117,31 @@ public class Folder implements Parcelable {
         return entries;
     }
 
-    public void setEntries(ArrayList<Entry> newEntries) {
+    public void setEntries(List<Entry> newEntries) {
         for (Entry entry : entries) {
             switch (entry.getType()) {
                 case BASIC: {
                     Arrays.fill(entry.getLabel(), (char) 0);
+                    entry.setLabel(null);
                     Arrays.fill(entry.getSecret(), (char) 0);
+                    entry.setSecret(null);
                     break;
                 }
             }
         }
         entries.clear();
-        entries.addAll(newEntries);
+
+        for (Entry entry : newEntries) {
+            switch (entry.getType()) {
+                case BASIC: {
+                    char[] label = entry.getLabel();
+                    char[] secret = entry.getSecret();
+                    entries.add(new Entry(
+                            Arrays.copyOf(label, label.length),
+                            Arrays.copyOf(secret, secret.length)
+                    ));
+                }
+            }
+        }
     }
 }

@@ -32,9 +32,9 @@ public class EncryptionTest {
         RANDOM.nextBytes(password);
         byte[] pwclone = Arrays.copyOf(password, password.length);
 
-        FileKey testKey = new FileKey(bytesToChars(password));
+        FileKey testKey = new FileKey(bytesToChars(password, true));
         EncryptedValue encrypted = testKey.encrypt(input, ad);
-        FileKey decryptKey = new FileKey(bytesToChars(pwclone), testKey.getSalt());
+        FileKey decryptKey = new FileKey(bytesToChars(pwclone, true), testKey.getSalt());
 
         try {
             byte[] decrypted = decryptKey.decrypt(encrypted, ad);
