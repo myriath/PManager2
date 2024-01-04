@@ -94,20 +94,24 @@ public class FileOpenActivity extends AppCompatActivity {
                             getString(R.string.create_domain),
                             getString(R.string.create), getString(R.string.cancel),
                             (dialogInterface, i, dialogView) -> {
-                                int index = folders.createFolder(getFieldString(R.id.domain, dialogView));
-                                if (index == -1) {
-                                    dialogInterface.cancel();
-                                    uiThread().execute(() -> toast(R.string.error_folder_exists, this));
-                                    return;
-                                }
-                                adapter.notifyItemInserted(index);
-                                findViewById(R.id.newButtonText).setVisibility(View.GONE);
-                                findViewById(R.id.searchButtonText).setVisibility(View.GONE);
-                                findViewById(R.id.emptyText).setVisibility(View.GONE);
-                                dialogInterface.dismiss();
-                                save(folders.getFolder(index));
+                                diskIO().execute(() -> {
+                                    int index = folders.createFolder(getFieldString(R.id.domain, dialogView));
+                                    if (index == -1) {
+                                        dialogInterface.cancel();
+                                        uiThread().execute(() -> toast(R.string.error_folder_exists, this));
+                                        return;
+                                    }
+                                    uiThread().execute(() -> {
+                                        adapter.notifyItemInserted(index);
+                                        findViewById(R.id.newButtonText).setVisibility(View.GONE);
+                                        findViewById(R.id.searchButtonText).setVisibility(View.GONE);
+                                        findViewById(R.id.emptyText).setVisibility(View.GONE);
+                                        dialogInterface.dismiss();
+//                                    save(folders.getFolder(index));
 
-                                startEditDialog(this, index, adapter);
+                                        startEditDialog(this, index, adapter);
+                                    });
+                                });
                             }, (dialogInterface, i, dialogView) -> dialogInterface.cancel()
                     );
                     customDialog.show(getSupportFragmentManager());

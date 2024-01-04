@@ -1,5 +1,7 @@
 package com.example.mitch.pmanager.models;
 
+import static com.example.mitch.pmanager.models.Entry.Types.BASIC;
+
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -9,6 +11,7 @@ import com.example.mitch.pmanager.objects.storage.UserEntry;
 import com.google.gson.annotations.Expose;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Folder data object.
@@ -30,7 +33,7 @@ public class Folder implements Parcelable {
      * List of entries in this folder
      */
     @Expose
-    private ArrayList<Entry> entries;
+    private final ArrayList<Entry> entries;
 
     /**
      * Constructs a folder from a v3 domain structure
@@ -113,7 +116,17 @@ public class Folder implements Parcelable {
         return entries;
     }
 
-    public void setEntries(ArrayList<Entry> entries) {
-        this.entries = entries;
+    public void setEntries(ArrayList<Entry> newEntries) {
+        for (Entry entry : entries) {
+            switch (entry.getType()) {
+                case BASIC: {
+                    Arrays.fill(entry.getLabel(), (char) 0);
+                    Arrays.fill(entry.getSecret(), (char) 0);
+                    break;
+                }
+            }
+        }
+        entries.clear();
+        entries.addAll(newEntries);
     }
 }

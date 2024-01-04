@@ -106,10 +106,9 @@ public class EditFolderDialog extends DialogFragment {
             if (id == R.id.newEntry) {
                 ((EntryEditAdapter) viewHolder.entriesList.getAdapter()).add(new Entry(BASIC));
             } else if (id == R.id.save) {
-                // TODO: save
-                destroyEntries(folder.getEntries());
+                // TODO: Entry character arrays are being filled with 0s for no fucking reason wtf
                 folder.setEntries(tempEntries);
-                tempEntries = null;
+//                tempEntries = null;
                 callbackListener.callback(null);
                 dismiss();
             } else {

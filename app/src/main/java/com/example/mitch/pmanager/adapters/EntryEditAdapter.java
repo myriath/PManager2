@@ -89,7 +89,7 @@ public class EntryEditAdapter extends BaseAdapter {
             if (!hasFocus) {
                 final EditText usernameField = (EditText) view;
                 try {
-                    entries.get(viewHolder.id).setLabel(getFieldChars(usernameField));
+                    entries.get(viewHolder.id).setLabel(getFieldChars(usernameField, false));
                 } catch (IndexOutOfBoundsException ignored) {
                 }
             }
@@ -99,7 +99,7 @@ public class EntryEditAdapter extends BaseAdapter {
             if (!hasFocus) {
                 final EditText passwordField = (EditText) view;
                 try {
-                    entries.get(viewHolder.id).setSecret(getFieldChars(passwordField));
+                    entries.get(viewHolder.id).setSecret(getFieldChars(passwordField, false));
                 } catch (IndexOutOfBoundsException ignored) {
                 }
             }

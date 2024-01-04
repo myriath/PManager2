@@ -181,7 +181,7 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
                     .setTitle(R.string.export_file)
                     .setMessage(file.getDisplayName())
                     .setPositiveButton(R.string.export, (dialogInterface, i) -> {
-                        char[] password = getFieldChars(R.id.password, dialogLayout);
+                        char[] password = getFieldChars(R.id.password, dialogLayout, true);
                         diskIO().execute(() -> {
                             Bundle bundle = new Bundle();
                             char[] pwclone = Arrays.copyOf(password, password.length);
@@ -219,7 +219,7 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
             final AlertDialog dialog = builder.create();
             dialog.show();
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view1 -> {
-                char[] password = getFieldChars(R.id.password, dialogLayout);
+                char[] password = getFieldChars(R.id.password, dialogLayout, true);
                 diskIO().execute(() -> {
                     String newFilename = getFieldString(R.id.filename, dialogLayout);
                     FileKey metaKey = new FileKey(password, file.getMetadata().getSalt());
@@ -254,8 +254,8 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
             dialog.show();
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener((view1) -> {
                 activity.startProgressBar(R.string.working, -1);
-                char[] password = getFieldChars(R.id.password, dialogLayout);
-                char[] newPassword = getFieldChars(R.id.newPassword, dialogLayout);
+                char[] password = getFieldChars(R.id.password, dialogLayout, true);
+                char[] newPassword = getFieldChars(R.id.newPassword, dialogLayout, true);
                 diskIO().execute(() -> {
                     FileKey oldKey = new FileKey(password, file.getMetadata().getSalt());
                     FileKey newKey = new FileKey(newPassword, file.getMetadata().getSalt());
@@ -291,7 +291,7 @@ public class FilesAdapter extends RecyclerView.Adapter<FilesAdapter.ViewHolder> 
                     .setTitle(activity.getString(R.string.delete_file, file.getDisplayName()))
                     .setMessage(R.string.are_you_sure_this_cannot_be_undone)
                     .setPositiveButton(R.string.delete, (dialogInterface, i) -> {
-                        char[] password = getFieldChars(R.id.password, dialogLayout);
+                        char[] password = getFieldChars(R.id.password, dialogLayout, true);
                         diskIO().execute(() -> {
                             FileKey key = new FileKey(password, file.getMetadata().getSalt());
                             try {

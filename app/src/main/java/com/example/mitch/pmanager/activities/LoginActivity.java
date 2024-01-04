@@ -186,7 +186,7 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
                             return;
                         }
                         ((TextInputLayout) dialogLayout.findViewById(R.id.filename)).setError("");
-                        char[] password = getFieldChars(R.id.password, dialogLayout);
+                        char[] password = getFieldChars(R.id.password, dialogLayout, true);
                         if (password.length == 0) {
                             ((TextInputLayout) dialogLayout.findViewById(R.id.password)).setError(getString(R.string.cannot_be_empty));
                             return;
@@ -278,7 +278,7 @@ public class LoginActivity extends AppCompatActivity implements CallbackListener
                         getString(R.string.open), getString(R.string.cancel),
                         (dialogInterface, i, dialogView) -> {
                             startProgressBar(R.string.working, -1);
-                            char[] password = getFieldChars(R.id.password, dialogView);
+                            char[] password = getFieldChars(R.id.password, dialogView, true);
                             diskIO().execute(() -> {
                                 FileKey fileKey = new FileKey(password, file.getMetadata().getSalt());
                                 try {

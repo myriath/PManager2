@@ -37,27 +37,29 @@ public class WindowUtil {
      * Gets a char[] of the contents of a given EditText.
      * Avoids creating any strings for secure access.
      *
-     * @param viewId R id of the edit text to read
-     * @param view   Source view to find the edit text in
+     * @param viewId     R id of the edit text to read
+     * @param view       Source view to find the edit text in
+     * @param clearField Whether or not to clear the field after fetching data
      * @return char[] of the contents.
      */
-    public static char[] getFieldChars(int viewId, View view) {
+    public static char[] getFieldChars(int viewId, View view, boolean clearField) {
         if (Looper.myLooper() != Looper.getMainLooper()) throw new IllegalThreadException();
         TextInputLayout field = view.findViewById(viewId);
-        return getFieldChars(field.getEditText());
+        return getFieldChars(field.getEditText(), clearField);
     }
 
     /**
      * Gets an edit text's data as a char[]
      *
-     * @param editText Edit text to retrieve data from
+     * @param editText   Edit text to retrieve data from
+     * @param clearField Whether or not to clear the field after fetching data
      * @return char[] of editText's data
      */
-    public static char[] getFieldChars(EditText editText) {
+    public static char[] getFieldChars(EditText editText, boolean clearField) {
         int length = Objects.requireNonNull(editText).length();
         char[] chars = new char[length];
         Objects.requireNonNull(editText.getText()).getChars(0, length, chars, 0);
-        editText.setText("");
+        if (clearField) editText.setText("");
         return chars;
     }
 

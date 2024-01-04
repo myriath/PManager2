@@ -289,7 +289,7 @@ public class FilesUtil {
                     activity.getString(R.string.open_file), filename,
                     activity.getString(R.string.open), activity.getString(R.string.cancel),
                     (dialogInterface, i, dialogView) -> {
-                        char[] password = getFieldChars(R.id.password, dialogView);
+                        char[] password = getFieldChars(R.id.password, dialogView, true);
                         diskIO().execute(() -> {
                             HashMap<String, Folder> folders = new HashMap<>();
 
