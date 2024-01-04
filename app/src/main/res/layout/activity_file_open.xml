@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/content"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/entriesList"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        android:clipToPadding="false"
+        android:fitsSystemWindows="true"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/buttonPanel"
+        android:fitsSystemWindows="true"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/newButton"
+            android:contentDescription="@string/new_entry"
+            android:src="@drawable/add"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toEndOf="@+id/searchButton" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/searchButton"
+            android:contentDescription="@string/search"
+            android:src="@drawable/search"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintBottom_toBottomOf="@+id/newButton"
+            app:layout_constraintEnd_toStartOf="@+id/newButton"
+            app:layout_constraintHorizontal_bias="0.5"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/newButton"
+            app:layout_constraintVertical_bias="0.0" />
+
+        <TextView
+            android:visibility="gone"
+            android:id="@+id/searchButtonText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="@string/search"
+            android:textSize="16sp"
+            app:layout_constraintBottom_toTopOf="@+id/searchButton"
+            app:layout_constraintEnd_toEndOf="@+id/searchButton"
+            app:layout_constraintStart_toStartOf="@+id/searchButton" />
+
+        <TextView
+            android:visibility="gone"
+            android:id="@+id/newButtonText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="@string/new_entry"
+            android:textSize="16sp"
+            app:layout_constraintBottom_toTopOf="@+id/newButton"
+            app:layout_constraintEnd_toEndOf="@+id/newButton"
+            app:layout_constraintStart_toStartOf="@+id/newButton" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <TextView
+        android:id="@+id/emptyText"
+        android:visibility="gone"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:textSize="72sp"
+        android:text="@string/no_entries" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
